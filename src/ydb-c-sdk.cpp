@@ -18,7 +18,7 @@ TDriverConfig* CreateDriverConfigConnectionString(char* connectionString) {
     return new TDriverConfig{{connectionString}};
 }
 
-void DestroyDriverConfig(TDriverConfig* config, char* endpoint) {
+void DestroyDriverConfig(TDriverConfig* config) {
     delete config;
 }
 
@@ -46,7 +46,7 @@ void DestroyDriver(TDriver* driver) {
     delete driver;
 }
 
-void Stop(TDriver* driver, bool wait) {
+void StopDriver(TDriver* driver, bool wait) {
     driver->driver.Stop(wait);
     delete driver;
 }

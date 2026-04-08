@@ -13,9 +13,14 @@ target_include_directories(ydb-c-sdk
         $<INSTALL_INTERFACE:include>
 )
 
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_link_libraries(ydb-c-sdk PRIVATE stdc++)
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_link_libraries(ydb-c-sdk PRIVATE c++)
+endif()
+
 set(YDB_DEPS_PATH "~/ydb_deps" CACHE STRING 
 "Path to where built from source YDB dependencies are installed")
-
 list(APPEND CMAKE_PREFIX_PATH ${YDB_DEPS_PATH})
 
 find_package(YDB-CPP-SDK REQUIRED)
@@ -57,6 +62,14 @@ install(TARGETS ydb-c-sdk
     ARCHIVE DESTINATION lib
     RUNTIME DESTINATION bin
     INCLUDES DESTINATION include
+)
+
+install(DIRECTORY include/ DESTINATION include)
+
+install(EXPORT ydb-c-sdk-targets
+    FILE ydb-c-sdk-targets.cmake
+    NAMESPACE ydb-c-sdk::
+    DESTINATION lib/cmake/ydb-c-sdk
 )
 
 include(CMakePackageConfigHelpers)
