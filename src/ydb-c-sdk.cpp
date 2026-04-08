@@ -1,4 +1,4 @@
-#include "wrapper.h"
+#include "ydb-c-sdk.h"
 
 #include <ydb-cpp-sdk/client/driver/driver.h>
 #include <ydb-cpp-sdk/client/query/query.h>

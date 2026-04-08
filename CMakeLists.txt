@@ -5,7 +5,13 @@ project(YDB-C-SDK VERSION 0.01 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED On)
 
-add_library(ydb-c-sdk wrapper.cpp)
+add_library(ydb-c-sdk STATIC)
+target_sources(ydb-c-sdk PRIVATE src/ydb-c-sdk.cpp)
+target_include_directories(ydb-c-sdk 
+    PUBLIC 
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+)
 
 set(YDB_DEPS_PATH "~/ydb_deps" CACHE STRING 
 "Path to where built from source YDB dependencies are installed")
@@ -44,3 +50,30 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     CoreFoundation
   )
 endif()
+
+install(TARGETS ydb-c-sdk
+    EXPORT ydb-c-sdk-targets
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    RUNTIME DESTINATION bin
+    INCLUDES DESTINATION include
+)
+
+include(CMakePackageConfigHelpers)
+configure_package_config_file(
+    cmake/ydb-c-sdk-config.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/ydb-c-sdk-config.cmake
+    INSTALL_DESTINATION lib/cmake/ydb-c-sdk
+)
+
+write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/ydb-c-sdk-config-version.cmake
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+)
+
+install(FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/ydb-c-sdk-config.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/ydb-c-sdk-config-version.cmake
+    DESTINATION lib/cmake/ydb-c-sdk
+)
