@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED On)
 
 add_library(ydb-c-sdk STATIC)
-target_sources(ydb-c-sdk PRIVATE src/ydb-c-sdk.cpp)
+target_sources(ydb-c-sdk PRIVATE src/driver.cpp src/query.cpp)
 target_include_directories(ydb-c-sdk 
     PUBLIC 
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
