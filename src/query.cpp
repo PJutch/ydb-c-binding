@@ -55,10 +55,48 @@ void* AsStatus(TQueryResult result) {
     return static_cast<void*>(as_status);
 }
 
-TQueryResult ExecuteQuerySync(TSession session_, char* query) {
+}
+
+// expects mode != TX_TRANSACTION
+NYdb::NQuery::TTxSettings CreateTxSettings(TxMode mode, bool allow_inconsistent_reads) {
+    switch (mode) {
+    case TX_SERIALIZABLE_RW:
+        return NYdb::NQuery::TTxSettings::SerializableRW();
+    case TX_ONLINE_RO:
+        return NYdb::NQuery::TTxSettings::OnlineRO(
+            NYdb::NQuery::TTxOnlineSettings{}.AllowInconsistentReads(allow_inconsistent_reads));
+    case TX_STALE_RO:
+        return NYdb::NQuery::TTxSettings::StaleRO();
+    case TX_SNAPSHOT_RO:
+        return NYdb::NQuery::TTxSettings::SnapshotRO();
+    case TX_SNAPSHOT_RW:
+        return NYdb::NQuery::TTxSettings::SnapshotRW();
+    default:
+        assert(false);
+    }
+}
+
+NYdb::NQuery::TTxControl CreateTx(TTx* tx_) {
+    if (!tx_) {
+        return NYdb::NQuery::TTxControl::NoTx();
+    } else if (tx_->mode == TX_TRANSACTION) {
+        return NYdb::NQuery::TTxControl::Tx(
+            *static_cast<NYdb::NQuery::TTransaction*>(tx_->transaction));
+    } else {
+        return NYdb::NQuery::TTxControl::BeginTx(
+                CreateTxSettings(tx_->mode, tx_->allow_inconsistent_reads))
+            .CommitTx(tx_->commit);
+    }
+}
+
+extern "C" {
+
+TQueryResult ExecuteQuerySync(TSession session_, char* query, TTx* tx_, TParams params_) {
     auto* session = static_cast<NYdb::NQuery::TSession*>(session_);
-    auto result = session->ExecuteQuery(query, NYdb::NQuery::TTxControl::NoTx()).GetValueSync();
-    return static_cast<void*>(new NYdb::NQuery::TExecuteQueryResult{std::move(result)});
+    auto* params = static_cast<NYdb::TParams*>(params_);
+    auto future = params ? session->ExecuteQuery(query, CreateTx(tx_), *params) 
+                         : session->ExecuteQuery(query, CreateTx(tx_));
+    return static_cast<void*>(new NYdb::NQuery::TExecuteQueryResult{future.GetValueSync()});
 }
 
 TStatus RetryQuerySync(TQueryClient* client, SyncRetryable query, void* data) {

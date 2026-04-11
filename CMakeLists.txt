@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED On)
 
 add_library(ydb-c-sdk STATIC)
-target_sources(ydb-c-sdk PRIVATE src/driver.cpp src/query.cpp)
+target_sources(ydb-c-sdk PRIVATE src/driver.cpp src/query.cpp src/params.cpp src/datetime.cpp)
 target_include_directories(ydb-c-sdk 
     PUBLIC 
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -32,8 +32,8 @@ target_link_libraries(ydb-c-sdk PUBLIC
   YDB-CPP-SDK::Driver
 )
 
-find_package(re2 REQUIRED)
-target_link_libraries(ydb-c-sdk PRIVATE ${RE2_LIBRARIES} re2::re2)
+# find_package(re2 REQUIRED)
+# target_link_libraries(ydb-c-sdk PRIVATE ${RE2_LIBRARIES} re2::re2)
 
 # if (CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "AMD64")
 #   target_link_libraries(basic_example PUBLIC

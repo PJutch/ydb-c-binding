@@ -1,3 +1,5 @@
+#include "data.h"
+
 #include <ydb-c-sdk.h>
 
 #include <stdbool.h>
@@ -15,7 +17,7 @@ TStatus CreateSeries(TSession session, void *) {
         "    PRIMARY KEY (series_id)"
         ");";
 
-    return ExecuteQuerySync(session, query);
+    return AsStatus(ExecuteQuerySync(session, query, NULL, NULL));
 }
 
 TStatus CreateSeasons(TSession session, void *) {
@@ -29,7 +31,7 @@ TStatus CreateSeasons(TSession session, void *) {
         "    PRIMARY KEY (series_id, season_id)"
         ");";
 
-    return ExecuteQuerySync(session, query);
+    return AsStatus(ExecuteQuerySync(session, query, NULL, NULL));
 }
 
 TStatus CreateEpisodes(TSession session, void *) {
@@ -42,22 +44,76 @@ TStatus CreateEpisodes(TSession session, void *) {
         "    air_date Uint64,"
         "    PRIMARY KEY (series_id, season_id, episode_id)"
         ");";
-    return ExecuteQuerySync(session, query);
+    return AsStatus(ExecuteQuerySync(session, query, NULL, NULL));
 }
 
 TStatus DropSeries(TSession session, void *) {
     char *query = "DROP TABLE series";
-    return ExecuteQuerySync(session, query);
+    return AsStatus(ExecuteQuerySync(session, query, NULL, NULL));
 }
 
 TStatus DropSeasons(TSession session, void *) {
     char *query = "DROP TABLE seasons";
-    return ExecuteQuerySync(session, query);
+    return AsStatus(ExecuteQuerySync(session, query, NULL, NULL));
 }
 
 TStatus DropEpisodes(TSession session, void *) {
     char *query = "DROP TABLE episodes";
-    return ExecuteQuerySync(session, query);
+    return AsStatus(ExecuteQuerySync(session, query, NULL, NULL));
+}
+
+TStatus FillData(TSession session, void*) {
+    char* query = 
+        "DECLARE $seriesData AS List<Struct<\n"
+            "series_id: Uint64,\n"
+            "title: Utf8,\n"
+            "series_info: Utf8,\n"
+            "release_date: Date>>;\n"
+           "\n"
+        "DECLARE $seasonsData AS List<Struct<\n"
+            "series_id: Uint64,\n"
+            "season_id: Uint64,\n"
+            "title: Utf8,\n"
+            "first_aired: Date,\n"
+            "last_aired: Date>>;\n"
+           "\n"
+        "DECLARE $episodesData AS List<Struct<\n"
+            "series_id: Uint64,\n"
+            "season_id: Uint64,\n"
+            "episode_id: Uint64,\n"
+            "title: Utf8,\n"
+            "air_date: Date>>;\n"
+           "\n"
+        "REPLACE INTO series\n"
+        "SELECT\n"
+            "series_id,\n"
+            "title,\n"
+            "series_info,\n"
+            "CAST(release_date AS Uint16) AS release_date\n"
+        "FROM AS_TABLE($seriesData);\n"
+       "\n"
+        "REPLACE INTO seasons\n"
+        "SELECT\n"
+            "series_id,\n"
+            "season_id,\n"
+            "title,\n"
+            "CAST(first_aired AS Uint16) AS first_aired,\n"
+            "CAST(last_aired AS Uint16) AS last_aired\n"
+        "FROM AS_TABLE($seasonsData);\n"
+       "\n"
+        "REPLACE INTO episodes\n"
+        "SELECT\n"
+            "series_id,\n"
+            "season_id,\n"
+            "episode_id,\n"
+            "title,\n"
+            "CAST(air_date AS Uint16) AS air_date\n"
+        "FROM AS_TABLE($episodesData);\n";
+
+    TParams params = CreateParams();
+
+    TTx tx = {.mode = TX_SERIALIZABLE_RW, .commit = true};
+    return AsStatus(ExecuteQuerySync(session, query, &tx, params));
 }
 
 bool UnwrapStatus(TStatus status) {
@@ -75,6 +131,10 @@ bool Run(TQueryClient *client) {
     if (!(UnwrapStatus(RetryQuerySync(client, &CreateSeries, NULL))
             && UnwrapStatus(RetryQuerySync(client, &CreateSeasons, NULL))
             && UnwrapStatus(RetryQuerySync(client, &CreateEpisodes, NULL)))) {
+        return false;
+    }
+
+    if (!UnwrapStatus(RetryQuerySync(client, &FillData, NULL))) {
         return false;
     }
     

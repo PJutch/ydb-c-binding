@@ -9,7 +9,16 @@ set(YDB_DEPS_PATH "~/ydb_deps" CACHE STRING
 "Path to where built from source YDB dependencies are installed")
 list(APPEND CMAKE_PREFIX_PATH ${YDB_DEPS_PATH})
 
-add_executable(example main.c)
+add_executable(example main.c data.c)
+
+find_library(RE2_LIBRARY NAMES re2 REQUIRED PATHS /usr/lib/x86_64-linux-gnu)
+target_link_libraries(example PRIVATE ${RE2_LIBRARY})
+
+# prevent gRPC from searching for re2 config on Windows filesystem
+set(re2_FOUND YES)
+add_library(re2::re2 UNKNOWN IMPORTED)
+set_target_properties(re2::re2 PROPERTIES IMPORTED_LOCATION ${RE2_LIBRARY})
+
 
 find_package(YDB-C-SDK REQUIRED)
 

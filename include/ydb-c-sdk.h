@@ -3,5 +3,7 @@
 
 #include "ydb-c-sdk/driver.h"
 #include "ydb-c-sdk/query.h"
+#include "ydb-c-sdk/params.h"
+#include "ydb-c-sdk/datetime.h"
 
 #endif
