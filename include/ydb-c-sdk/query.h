@@ -2,6 +2,7 @@
 #define YDB_C_SDK_QUERY_H_
 
 #include "driver.h"
+#include "results.h"
 #include "params.h"
 
 #include <stdbool.h>
@@ -14,23 +15,6 @@ YDB_C_SDK_OPAQUE_STRUCT(YdbQueryClient)
 
 YdbQueryClient YdbCreateQueryClient(YdbDriver driver);
 void YdbDestroyQueryClient(YdbQueryClient client);
-
-YDB_C_SDK_OPAQUE_STRUCT(YdbStatus)
-
-void YdbDestroyStatus(YdbStatus status);
-
-bool YdbIsSuccess(YdbStatus status);
-bool YdbIsTransportError(YdbStatus status);
-
-char* YdbGetErrorMessage(YdbStatus status);
-void YdbDestroyErrorMessage(char* message);
-
-YDB_C_SDK_OPAQUE_STRUCT(YdbQueryResult)
-
-void YdbDestroyResult(YdbQueryResult result);
-
-// Doesn't copy, don't destroy both
-YdbStatus YdbAsStatus(YdbQueryResult result);
 
 YDB_C_SDK_OPAQUE_STRUCT(YdbSession)
 

@@ -9,9 +9,14 @@ extern "C" {
 
 YDB_C_SDK_OPAQUE_STRUCT(YdbInstant)
 
+#define YDB_NULL_INSTANT (YdbInstant){NULL}
+
 void YdbDestroyInstant(YdbInstant instant);
 
-YdbInstant YdbParseIso8601(char* date);
+YdbInstant YdbInstantParseIso8601(char* date);
+
+// Deallocate using free()
+char* YdbFormatLocalTime(YdbInstant instant, char* format_string);
 
 #ifdef __cplusplus
 }

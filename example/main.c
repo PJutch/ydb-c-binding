@@ -116,11 +116,28 @@ YdbStatus FillData(YdbSession session, void*) {
     return YdbAsStatus(YdbExecuteQuerySync(session, query, &tx, params));
 }
 
+YdbStatus SelectSimple(YdbSession session, void* data) {
+    YdbResultSet* result_set = (YdbResultSet*) data;
+
+    char* query = 
+        "SELECT series_id, title, CAST(release_date AS Date) AS release_date\n"
+        "FROM series\n"
+        "WHERE series_id = 1;";
+
+    YdbTx tx = {.mode = YDB_TX_SERIALIZABLE_RW, .commit = true};
+    YdbQueryResult result = YdbExecuteQuerySync(session, query, &tx, YDB_NULL_PARAMS);
+    if (YdbIsSuccess(YdbAsStatus(result))) {
+        *result_set = YdbGetResultSet(result, 0);
+        return YdbAsStatus(result);
+    }
+    return YdbAsStatus(result);
+}
+
 bool UnwrapStatus(YdbStatus status) {
     if (!YdbIsSuccess(status)) {
         char *error = YdbGetErrorMessage(status);
         fprintf(stderr, "fatal error: %s\n", error);
-        YdbDestroyErrorMessage(error);
+        free(error);
         return false;
     }
     YdbDestroyStatus(status);
@@ -136,6 +153,43 @@ bool Run(YdbQueryClient client) {
 
     if (!UnwrapStatus(YdbRetryQuerySync(client, &FillData, NULL))) {
         return false;
+    }
+
+    YdbResultSet result_set = {NULL};
+    if (!UnwrapStatus(YdbRetryQuerySync(client, &SelectSimple, &result_set))) {
+        return false;
+    }
+
+    YdbResultSetParser parser = YdbCreateResultSetParser(result_set);
+    while (YdbNextRow(parser)) {
+        printf("> SelectSimple:\nSeries");
+
+        printf(", Id: ");
+        bool id_exists;
+        uint64_t id = YdbParseUint64(YdbColumnParser(parser, "series_id"), &id_exists);
+        if (id_exists) {
+            printf("%lu", id);
+        } else {
+            printf("(NULL)");
+        }
+
+        printf(", Title: ");
+        char* title = YdbParseUtf8(YdbColumnParser(parser, "title"));
+        if (title) {
+            printf("%s", title);
+        } else {
+            printf("(NULL)");
+        }
+
+        printf(", Release date: ");
+        YdbInstant release_date = YdbParseDate(YdbColumnParser(parser, "release_date"));
+        if (release_date.data) {
+            printf("%s", YdbFormatLocalTime(release_date, "%Y-%m-%d"));
+        } else {
+            printf("(NULL)");
+        }
+
+        printf("\n");
     }
     
     if (!(UnwrapStatus(YdbRetryQuerySync(client, &DropSeries, NULL))

@@ -4,8 +4,6 @@
 
 #include <ydb-cpp-sdk/client/query/query.h>
 #include <ydb-cpp-sdk/client/query/client.h>
-#include <__ydb_sdk_special_headers/util/stream/str.h>
-#include <__ydb_sdk_special_headers/util/generic/string.h>
 
 extern "C" {
 
@@ -15,40 +13,6 @@ YdbQueryClient YdbCreateQueryClient(YdbDriver driver) {
 
 void YdbDestroyQueryClient(YdbQueryClient client) {
     delete PTR_FROM_OPAQUE(NYdb::NQuery::TQueryClient, client);
-}
-
-void YdbDestroyStatus(YdbStatus status) {
-    delete PTR_FROM_OPAQUE(NYdb::TStatus, status);
-}
-
-bool YdbIsSuccess(YdbStatus status) {
-    return FROM_OPAQUE(NYdb::TStatus, status).IsSuccess();
-}
-
-bool YdbIsTransportError(YdbStatus status) {
-    return FROM_OPAQUE(NYdb::TStatus, status).IsTransportError();
-}
-
-char* YdbGetErrorMessage(YdbStatus status) {
-    TString string;
-    TStringOutput stream{string};
-
-    FROM_OPAQUE(NYdb::TStatus, status).Out(stream);
-
-    return strdup(string.data());
-}
-
-void YdbDestroyErrorMessage(char* message) {
-    free(message);
-}
-
-void YdbFreeResult(YdbQueryResult result) {
-    free(result.data);
-}
-
-YdbStatus YdbAsStatus(YdbQueryResult result) {
-    auto& as_status = static_cast<NYdb::TStatus&>(FROM_OPAQUE(NYdb::NQuery::TExecuteQueryResult, result));
-    return {static_cast<void*>(&as_status)};
 }
 
 }
