@@ -17,7 +17,7 @@ YdbStatus CreateSeries(YdbSession session, void *) {
         "    PRIMARY KEY (series_id)"
         ");";
 
-    return AsStatus(ExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
+    return YdbAsStatus(YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
 }
 
 YdbStatus CreateSeasons(YdbSession session, void *) {
@@ -31,7 +31,7 @@ YdbStatus CreateSeasons(YdbSession session, void *) {
         "    PRIMARY KEY (series_id, season_id)"
         ");";
 
-    return AsStatus(ExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
+    return YdbAsStatus(YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
 }
 
 YdbStatus CreateEpisodes(YdbSession session, void *) {
@@ -44,22 +44,22 @@ YdbStatus CreateEpisodes(YdbSession session, void *) {
         "    air_date Uint64,"
         "    PRIMARY KEY (series_id, season_id, episode_id)"
         ");";
-    return AsStatus(ExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
+    return YdbAsStatus(YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
 }
 
 YdbStatus DropSeries(YdbSession session, void *) {
     char *query = "DROP TABLE series";
-    return AsStatus(ExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
+    return YdbAsStatus(YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
 }
 
 YdbStatus DropSeasons(YdbSession session, void *) {
     char *query = "DROP TABLE seasons";
-    return AsStatus(ExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
+    return YdbAsStatus(YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
 }
 
 YdbStatus DropEpisodes(YdbSession session, void *) {
     char *query = "DROP TABLE episodes";
-    return AsStatus(ExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
+    return YdbAsStatus(YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
 }
 
 YdbStatus FillData(YdbSession session, void*) {
@@ -113,34 +113,34 @@ YdbStatus FillData(YdbSession session, void*) {
     YdbParams params = CreateParams();
 
     YdbTx tx = {.mode = YDB_TX_SERIALIZABLE_RW, .commit = true};
-    return AsStatus(ExecuteQuerySync(session, query, &tx, params));
+    return YdbAsStatus(YdbExecuteQuerySync(session, query, &tx, params));
 }
 
 bool UnwrapStatus(YdbStatus status) {
-    if (!IsSuccess(status)) {
-        char *error = GetErrorMessage(status);
+    if (!YdbIsSuccess(status)) {
+        char *error = YdbGetErrorMessage(status);
         fprintf(stderr, "fatal error: %s\n", error);
-        DestroyErrorMessage(error);
+        YdbDestroyErrorMessage(error);
         return false;
     }
-    DestroyStatus(status);
+    YdbDestroyStatus(status);
     return true;
 }
 
 bool Run(YdbQueryClient client) {
-    if (!(UnwrapStatus(RetryQuerySync(client, &CreateSeries, NULL))
-            && UnwrapStatus(RetryQuerySync(client, &CreateSeasons, NULL))
-            && UnwrapStatus(RetryQuerySync(client, &CreateEpisodes, NULL)))) {
+    if (!(UnwrapStatus(YdbRetryQuerySync(client, &CreateSeries, NULL))
+            && UnwrapStatus(YdbRetryQuerySync(client, &CreateSeasons, NULL))
+            && UnwrapStatus(YdbRetryQuerySync(client, &CreateEpisodes, NULL)))) {
         return false;
     }
 
-    if (!UnwrapStatus(RetryQuerySync(client, &FillData, NULL))) {
+    if (!UnwrapStatus(YdbRetryQuerySync(client, &FillData, NULL))) {
         return false;
     }
     
-    if (!(UnwrapStatus(RetryQuerySync(client, &DropSeries, NULL))
-            && UnwrapStatus(RetryQuerySync(client, &DropSeasons, NULL))
-            && UnwrapStatus(RetryQuerySync(client, &DropEpisodes, NULL)))) {
+    if (!(UnwrapStatus(YdbRetryQuerySync(client, &DropSeries, NULL))
+            && UnwrapStatus(YdbRetryQuerySync(client, &DropSeasons, NULL))
+            && UnwrapStatus(YdbRetryQuerySync(client, &DropEpisodes, NULL)))) {
         return false;
     }
 
@@ -148,18 +148,18 @@ bool Run(YdbQueryClient client) {
 }
 
 int main() {
-    YdbDriverConfig config = CreateDriverConfig();
-    DriverConfigSetEndpoint(config, "localhost:2136");
-    DriverConfigSetDatabase(config, "/Root/test");
+    YdbDriverConfig config = YdbCreateDriverConfig();
+    YdbDriverConfigSetEndpoint(config, "localhost:2136");
+    YdbDriverConfigSetDatabase(config, "/Root/test");
 
-    YdbDriver driver = CreateDriver(config);
-    YdbQueryClient client = CreateQueryClient(driver);
+    YdbDriver driver = YdbCreateDriver(config);
+    YdbQueryClient client = YdbCreateQueryClient(driver);
 
     bool ok = Run(client);
 
-    DestroyQueryClient(client);
-    StopDriver(driver, true);
-    DestroyDriverConfig(config);
+    YdbDestroyQueryClient(client);
+    YdbStopDriver(driver, true);
+    YdbDestroyDriverConfig(config);
 
     return ok ? 0 : 2;
 }

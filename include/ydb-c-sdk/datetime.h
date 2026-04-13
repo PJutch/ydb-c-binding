@@ -9,9 +9,9 @@ extern "C" {
 
 YDB_C_SDK_OPAQUE_STRUCT(YdbInstant)
 
-void DestroyInstant(YdbInstant instant);
+void YdbDestroyInstant(YdbInstant instant);
 
-YdbInstant ParseIso8601(char* date);
+YdbInstant YdbParseIso8601(char* date);
 
 #ifdef __cplusplus
 }

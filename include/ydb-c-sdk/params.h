@@ -11,33 +11,33 @@ extern "C" {
 
 YDB_C_SDK_OPAQUE_STRUCT(YdbParamsBuilder)
 
-YdbParamsBuilder CreateParamsBuilder();
+YdbParamsBuilder YdbCreateParamsBuilder();
 
 YDB_C_SDK_OPAQUE_STRUCT(YdbParamValueBuilder)
 
-YdbParamValueBuilder AddParam(YdbParamsBuilder builder, char* name);
+YdbParamValueBuilder YdbAddParam(YdbParamsBuilder builder, char* name);
 
-void ParamBeginList(YdbParamValueBuilder builder);
-void ParamAddListItem(YdbParamValueBuilder builder);
-void ParamEndList(YdbParamValueBuilder builder);
+void YdbParamBeginList(YdbParamValueBuilder builder);
+void YdbParamAddListItem(YdbParamValueBuilder builder);
+void YdbParamEndList(YdbParamValueBuilder builder);
 
-void ParamBeginStruct(YdbParamValueBuilder builder);
-void ParamAddMember(YdbParamValueBuilder builder, char* name);
-void ParamEndStruct(YdbParamValueBuilder builder);
+void YdbParamBeginStruct(YdbParamValueBuilder builder);
+void YdbParamAddMember(YdbParamValueBuilder builder, char* name);
+void YdbParamEndStruct(YdbParamValueBuilder builder);
 
-void ParamUtf8(YdbParamValueBuilder builder, char* value);
-void ParamUint8(YdbParamValueBuilder builder, uint8_t value);
-void ParamUint64(YdbParamValueBuilder builder, uint64_t value);
-void ParamDate(YdbParamValueBuilder builder, YdbInstant date);
+void YdbParamUtf8(YdbParamValueBuilder builder, char* value);
+void YdbParamUint8(YdbParamValueBuilder builder, uint8_t value);
+void YdbParamUint64(YdbParamValueBuilder builder, uint64_t value);
+void YdbParamDate(YdbParamValueBuilder builder, YdbInstant date);
 
 YDB_C_SDK_OPAQUE_STRUCT(YdbParams)
 
 #define YDB_NULL_PARAMS ((YdbParams){NULL})
 
-void BuildParamValue(YdbParamValueBuilder builder);
-YdbParams BuildParams(YdbParamsBuilder builder);
+void YdbBuildParamValue(YdbParamValueBuilder builder);
+YdbParams YdbBuildParams(YdbParamsBuilder builder);
 
-void DestroyParams(YdbParams);
+void YdbDestroyParams(YdbParams);
 
 #ifdef __cplusplus
 }

@@ -12,25 +12,25 @@ extern "C" {
 
 YDB_C_SDK_OPAQUE_STRUCT(YdbQueryClient)
 
-YdbQueryClient CreateQueryClient(YdbDriver driver);
-void DestroyQueryClient(YdbQueryClient client);
+YdbQueryClient YdbCreateQueryClient(YdbDriver driver);
+void YdbDestroyQueryClient(YdbQueryClient client);
 
 YDB_C_SDK_OPAQUE_STRUCT(YdbStatus)
 
-void DestroyStatus(YdbStatus status);
+void YdbDestroyStatus(YdbStatus status);
 
-bool IsSuccess(YdbStatus status);
-bool IsTransportError(YdbStatus status);
+bool YdbIsSuccess(YdbStatus status);
+bool YdbIsTransportError(YdbStatus status);
 
-char* GetErrorMessage(YdbStatus status);
-void DestroyErrorMessage(char* message);
+char* YdbGetErrorMessage(YdbStatus status);
+void YdbDestroyErrorMessage(char* message);
 
 YDB_C_SDK_OPAQUE_STRUCT(YdbQueryResult)
 
-void DestroyResult(YdbQueryResult result);
+void YdbDestroyResult(YdbQueryResult result);
 
 // Doesn't copy, don't destroy both
-YdbStatus AsStatus(YdbQueryResult result);
+YdbStatus YdbAsStatus(YdbQueryResult result);
 
 YDB_C_SDK_OPAQUE_STRUCT(YdbSession)
 
@@ -52,11 +52,11 @@ typedef struct YdbTx {
     YdbTransaction transaction;
 } YdbTx;
 
-YdbQueryResult ExecuteQuerySync(YdbSession session, char* query, YdbTx* tx, YdbParams params);
+YdbQueryResult YdbExecuteQuerySync(YdbSession session, char* query, YdbTx* tx, YdbParams params);
 
 typedef YdbStatus (*YdbSyncRetryable) (YdbSession session, void* data);
 
-YdbStatus RetryQuerySync(YdbQueryClient client, YdbSyncRetryable query, void* data);
+YdbStatus YdbRetryQuerySync(YdbQueryClient client, YdbSyncRetryable query, void* data);
 
 #ifdef __cplusplus
 }
