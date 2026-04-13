@@ -1,46 +1,42 @@
-#include "driver.hpp"
+#include <ydb-cpp-sdk/client/driver/driver.h>
+
+#include "ydb-c-sdk/driver.h"
+
+#include "helpers.hpp"
 
 extern "C" {
 
-struct TDriverConfig {
-    NYdb::TDriverConfig config{};
-};
-
-TDriverConfig* CreateDriverConfig() {
-    return new TDriverConfig{};
+YdbDriverConfig CreateDriverConfig() {
+    return {new NYdb::TDriverConfig{}};
 }
 
-TDriverConfig* CreateDriverConfigConnectionString(char* connectionString) {
-    return new TDriverConfig{{connectionString}};
+YdbDriverConfig CreateDriverConfigConnectionString(char* connectionString) {
+    return {new NYdb::TDriverConfig{connectionString}};
 }
 
-void DestroyDriverConfig(TDriverConfig* config) {
-    delete config;
+void DestroyDriverConfig(YdbDriverConfig config) {
+    delete PTR_FROM_OPAQUE(NYdb::TDriverConfig, config);
 }
 
-void DriverConfigSetEndpoint(TDriverConfig* config, char* endpoint) {
-    config->config.SetEndpoint(endpoint);
+void DriverConfigSetEndpoint(YdbDriverConfig config, char* endpoint) {
+    FROM_OPAQUE(NYdb::TDriverConfig, config).SetEndpoint(endpoint);
 }
 
-void DriverConfigSetDatabase(TDriverConfig* config, char* database) {
-    config->config.SetDatabase(database);
+void DriverConfigSetDatabase(YdbDriverConfig config, char* database) {
+    FROM_OPAQUE(NYdb::TDriverConfig, config).SetDatabase(database);
 }
 
-void DriverConfigUseSecureConnection(TDriverConfig* config, char* caCert) {
-    config->config.UseSecureConnection(caCert);
+void DriverConfigUseSecureConnection(YdbDriverConfig config, char* caCert) {
+    FROM_OPAQUE(NYdb::TDriverConfig, config).UseSecureConnection(caCert);
 }
 
-TDriver* CreateDriver(TDriverConfig* config) {
-    return new TDriver{{config->config}};
+YdbDriver CreateDriver(YdbDriverConfig config) {
+    return {new NYdb::TDriver{FROM_OPAQUE(NYdb::TDriverConfig, config)}};
 }
 
-void DestroyDriver(TDriver* driver) {
-    delete driver;
-}
-
-void StopDriver(TDriver* driver, bool wait) {
-    driver->driver.Stop(wait);
-    delete driver;
+void StopDriver(YdbDriver driver, bool wait) {
+    FROM_OPAQUE(NYdb::TDriver, driver).Stop(wait);
+    delete PTR_FROM_OPAQUE(NYdb::TDriver, driver);
 }
 
 }

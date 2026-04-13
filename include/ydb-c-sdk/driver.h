@@ -1,27 +1,29 @@
 #ifndef YDB_C_SDK_DRIVER_H_
 #define YDB_C_SDK_DRIVER_H_
 
+#include "helpers.h"
+
 #include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct TDriverConfig TDriverConfig;
+YDB_C_SDK_OPAQUE_STRUCT(YdbDriverConfig)
 
-TDriverConfig* CreateDriverConfig();
-TDriverConfig* CreateDriverConfigConnectionString(char* connectionString);
+YdbDriverConfig CreateDriverConfig();
+YdbDriverConfig CreateDriverConfigConnectionString(char* connectionString);
 
-void DestroyDriverConfig(TDriverConfig* config);
+void DestroyDriverConfig(YdbDriverConfig config);
 
-void DriverConfigSetEndpoint(TDriverConfig* config, char* endpoint);
-void DriverConfigSetDatabase(TDriverConfig* config, char* database);
-void DriverConfigUseSecureConnection(TDriverConfig* config, char* caCert);
+void DriverConfigSetEndpoint(YdbDriverConfig config, char* endpoint);
+void DriverConfigSetDatabase(YdbDriverConfig config, char* database);
+void DriverConfigUseSecureConnection(YdbDriverConfig config, char* caCert);
 
-typedef struct TDriver TDriver;
+YDB_C_SDK_OPAQUE_STRUCT(YdbDriver)
 
-TDriver* CreateDriver(TDriverConfig* config);
-void StopDriver(TDriver* driver, bool wait);
+YdbDriver CreateDriver(YdbDriverConfig config);
+void StopDriver(YdbDriver driver, bool wait);
 
 #ifdef __cplusplus
 }

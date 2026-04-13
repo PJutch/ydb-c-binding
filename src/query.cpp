@@ -1,5 +1,6 @@
-#include "driver.hpp"
 #include "ydb-c-sdk/query.h"
+
+#include "helpers.hpp"
 
 #include <ydb-cpp-sdk/client/query/query.h>
 #include <ydb-cpp-sdk/client/query/client.h>
@@ -8,35 +9,31 @@
 
 extern "C" {
 
-struct TQueryClient {
-    NYdb::NQuery::TQueryClient client;
-};
-
-TQueryClient* CreateQueryClient(TDriver* driver) {
-    return new TQueryClient{{driver->driver}};
+YdbQueryClient CreateQueryClient(YdbDriver driver) {
+    return {new NYdb::NQuery::TQueryClient{FROM_OPAQUE(NYdb::TDriver, driver)}};
 }
 
-void DestroyQueryClient(TQueryClient* client) {
-    delete client;
+void DestroyQueryClient(YdbQueryClient client) {
+    delete PTR_FROM_OPAQUE(NYdb::NQuery::TQueryClient, client);
 }
 
-void DestroyStatus(TStatus status) {
-    delete static_cast<NYdb::TStatus*>(status);
+void DestroyStatus(YdbStatus status) {
+    delete PTR_FROM_OPAQUE(NYdb::TStatus, status);
 }
 
-bool IsSuccess(TStatus status) {
-    return static_cast<NYdb::TStatus*>(status)->IsSuccess();
+bool IsSuccess(YdbStatus status) {
+    return FROM_OPAQUE(NYdb::TStatus, status).IsSuccess();
 }
 
-bool IsTransportError(TStatus status) {
-    return static_cast<NYdb::TStatus*>(status)->IsTransportError();
+bool IsTransportError(YdbStatus status) {
+    return FROM_OPAQUE(NYdb::TStatus, status).IsTransportError();
 }
 
-char* GetErrorMessage(TStatus status) {
+char* GetErrorMessage(YdbStatus status) {
     TString string;
     TStringOutput stream{string};
 
-    static_cast<NYdb::TStatus*>(status)->Out(stream);
+    FROM_OPAQUE(NYdb::TStatus, status).Out(stream);
 
     return strdup(string.data());
 }
@@ -45,43 +42,41 @@ void DestroyErrorMessage(char* message) {
     free(message);
 }
 
-void FreeResult(TQueryResult* result) {
-    free(result);
+void FreeResult(YdbQueryResult result) {
+    free(result.data);
 }
 
-void* AsStatus(TQueryResult result) {
-    auto* as_result = static_cast<NYdb::NQuery::TExecuteQueryResult*>(result);
-    auto* as_status = static_cast<NYdb::TStatus*>(as_result);
-    return static_cast<void*>(as_status);
+YdbStatus AsStatus(YdbQueryResult result) {
+    auto& as_status = static_cast<NYdb::TStatus&>(FROM_OPAQUE(NYdb::NQuery::TExecuteQueryResult, result));
+    return {static_cast<void*>(&as_status)};
 }
 
 }
 
-// expects mode != TX_TRANSACTION
-NYdb::NQuery::TTxSettings CreateTxSettings(TxMode mode, bool allow_inconsistent_reads) {
+// expects mode != YdbX_TRANSACTION
+NYdb::NQuery::TTxSettings CreateTxSettings(YdbxMode mode, bool allow_inconsistent_reads) {
     switch (mode) {
-    case TX_SERIALIZABLE_RW:
+    case YDB_TX_SERIALIZABLE_RW:
         return NYdb::NQuery::TTxSettings::SerializableRW();
-    case TX_ONLINE_RO:
+    case YDB_TX_ONLINE_RO:
         return NYdb::NQuery::TTxSettings::OnlineRO(
             NYdb::NQuery::TTxOnlineSettings{}.AllowInconsistentReads(allow_inconsistent_reads));
-    case TX_STALE_RO:
+    case YDB_TX_STALE_RO:
         return NYdb::NQuery::TTxSettings::StaleRO();
-    case TX_SNAPSHOT_RO:
+    case YDB_TX_SNAPSHOT_RO:
         return NYdb::NQuery::TTxSettings::SnapshotRO();
-    case TX_SNAPSHOT_RW:
+    case YDB_TX_SNAPSHOT_RW:
         return NYdb::NQuery::TTxSettings::SnapshotRW();
     default:
         assert(false);
     }
 }
 
-NYdb::NQuery::TTxControl CreateTx(TTx* tx_) {
+NYdb::NQuery::TTxControl CreateTx(YdbTx* tx_) {
     if (!tx_) {
         return NYdb::NQuery::TTxControl::NoTx();
-    } else if (tx_->mode == TX_TRANSACTION) {
-        return NYdb::NQuery::TTxControl::Tx(
-            *static_cast<NYdb::NQuery::TTransaction*>(tx_->transaction));
+    } else if (tx_->mode == YDB_TX_TRANSACTION) {
+        return NYdb::NQuery::TTxControl::Tx(FROM_OPAQUE(NYdb::NQuery::TTransaction, tx_->transaction));
     } else {
         return NYdb::NQuery::TTxControl::BeginTx(
                 CreateTxSettings(tx_->mode, tx_->allow_inconsistent_reads))
@@ -91,24 +86,25 @@ NYdb::NQuery::TTxControl CreateTx(TTx* tx_) {
 
 extern "C" {
 
-TQueryResult ExecuteQuerySync(TSession session_, char* query, TTx* tx_, TParams params_) {
-    auto* session = static_cast<NYdb::NQuery::TSession*>(session_);
-    auto* params = static_cast<NYdb::TParams*>(params_);
-    auto future = params ? session->ExecuteQuery(query, CreateTx(tx_), *params) 
-                         : session->ExecuteQuery(query, CreateTx(tx_));
-    return static_cast<void*>(new NYdb::NQuery::TExecuteQueryResult{future.GetValueSync()});
+YdbQueryResult ExecuteQuerySync(YdbSession session_, char* query, YdbTx* tx_, YdbParams params_) {
+    auto& session = FROM_OPAQUE(NYdb::NQuery::TSession, session_);
+    auto* params = PTR_FROM_OPAQUE(NYdb::TParams, params_);
+    auto future = params ? session.ExecuteQuery(query, CreateTx(tx_), *params) 
+                         : session.ExecuteQuery(query, CreateTx(tx_));
+    return {static_cast<void*>(new NYdb::NQuery::TExecuteQueryResult{future.GetValueSync()})};
 }
 
-TStatus RetryQuerySync(TQueryClient* client, SyncRetryable query, void* data) {
-    NYdb::TStatus status = client->client.RetryQuerySync([query, data](NYdb::NQuery::TSession session) {
-        NYdb::TStatus* status = static_cast<NYdb::TStatus*>(query(static_cast<TSession>(&session), data));
+YdbStatus RetryQuerySync(YdbQueryClient client, YdbSyncRetryable query, void* data) {
+    NYdb::TStatus status = FROM_OPAQUE(NYdb::NQuery::TQueryClient, client)
+            .RetryQuerySync([query, data](NYdb::NQuery::TSession session) {
+        NYdb::TStatus* status = PTR_FROM_OPAQUE(NYdb::TStatus, query({static_cast<void*>(&session)}, data));
 
         NYdb::TStatus status_value = std::move(*status);
         delete status;
         return status_value;
     });
 
-    return static_cast<void*>(new NYdb::TStatus(std::move(status)));
+    return {static_cast<void*>(new NYdb::TStatus(std::move(status)))};
 }
 
 }

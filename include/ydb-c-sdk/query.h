@@ -10,53 +10,53 @@
 extern "C" {
 #endif
 
-typedef struct TQueryClient TQueryClient;
+YDB_C_SDK_OPAQUE_STRUCT(YdbQueryClient)
 
-TQueryClient* CreateQueryClient(TDriver* driver);
-void DestroyQueryClient(TQueryClient* client);
+YdbQueryClient CreateQueryClient(YdbDriver driver);
+void DestroyQueryClient(YdbQueryClient client);
 
-typedef void* TStatus;
+YDB_C_SDK_OPAQUE_STRUCT(YdbStatus)
 
-void DestroyStatus(TStatus status);
+void DestroyStatus(YdbStatus status);
 
-bool IsSuccess(TStatus status);
-bool IsTransportError(TStatus status);
+bool IsSuccess(YdbStatus status);
+bool IsTransportError(YdbStatus status);
 
-char* GetErrorMessage(TStatus status);
+char* GetErrorMessage(YdbStatus status);
 void DestroyErrorMessage(char* message);
 
-typedef void* TQueryResult;
+YDB_C_SDK_OPAQUE_STRUCT(YdbQueryResult)
 
-void DestroyResult(TQueryResult result);
+void DestroyResult(YdbQueryResult result);
 
 // Doesn't copy, don't destroy both
-TStatus AsStatus(TQueryResult result);
+YdbStatus AsStatus(YdbQueryResult result);
 
-typedef void* TSession;
+YDB_C_SDK_OPAQUE_STRUCT(YdbSession)
 
-typedef enum TxMode {
-    TX_SERIALIZABLE_RW,
-    TX_ONLINE_RO,
-    TX_STALE_RO,
-    TX_SNAPSHOT_RO,
-    TX_SNAPSHOT_RW,
-    TX_TRANSACTION,
-} TxMode;
+typedef enum YdbxMode {
+    YDB_TX_SERIALIZABLE_RW,
+    YDB_TX_ONLINE_RO,
+    YDB_TX_STALE_RO,
+    YDB_TX_SNAPSHOT_RO,
+    YDB_TX_SNAPSHOT_RW,
+    YDB_TX_TRANSACTION,
+} YdbxMode;
 
-typedef void* Transaction;
+YDB_C_SDK_OPAQUE_STRUCT(YdbTransaction)
 
-typedef struct TTx {
-    TxMode mode;
+typedef struct YdbTx {
+    YdbxMode mode;
     bool commit;
     bool allow_inconsistent_reads;
-    Transaction transaction;
-} TTx;
+    YdbTransaction transaction;
+} YdbTx;
 
-TQueryResult ExecuteQuerySync(TSession session, char* query, TTx* tx, TParams params);
+YdbQueryResult ExecuteQuerySync(YdbSession session, char* query, YdbTx* tx, YdbParams params);
 
-typedef TStatus (*SyncRetryable) (TSession session, void* data);
+typedef YdbStatus (*YdbSyncRetryable) (YdbSession session, void* data);
 
-TStatus RetryQuerySync(TQueryClient* client, SyncRetryable query, void* data);
+YdbStatus RetryQuerySync(YdbQueryClient client, YdbSyncRetryable query, void* data);
 
 #ifdef __cplusplus
 }

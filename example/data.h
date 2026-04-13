@@ -3,6 +3,6 @@
 
 #include "ydb-c-sdk/params.h"
 
-TParams CreateParams();
+YdbParams CreateParams();
 
 #endif

@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-TStatus CreateSeries(TSession session, void *) {
+YdbStatus CreateSeries(YdbSession session, void *) {
     char *query =
         "CREATE TABLE series ("
         "    series_id Uint64,"
@@ -17,10 +17,10 @@ TStatus CreateSeries(TSession session, void *) {
         "    PRIMARY KEY (series_id)"
         ");";
 
-    return AsStatus(ExecuteQuerySync(session, query, NULL, NULL));
+    return AsStatus(ExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
 }
 
-TStatus CreateSeasons(TSession session, void *) {
+YdbStatus CreateSeasons(YdbSession session, void *) {
     char *query =
         "CREATE TABLE seasons ("
         "    series_id Uint64,"
@@ -31,10 +31,10 @@ TStatus CreateSeasons(TSession session, void *) {
         "    PRIMARY KEY (series_id, season_id)"
         ");";
 
-    return AsStatus(ExecuteQuerySync(session, query, NULL, NULL));
+    return AsStatus(ExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
 }
 
-TStatus CreateEpisodes(TSession session, void *) {
+YdbStatus CreateEpisodes(YdbSession session, void *) {
     char *query =
         "CREATE TABLE episodes ("
         "    series_id Uint64,"
@@ -44,25 +44,25 @@ TStatus CreateEpisodes(TSession session, void *) {
         "    air_date Uint64,"
         "    PRIMARY KEY (series_id, season_id, episode_id)"
         ");";
-    return AsStatus(ExecuteQuerySync(session, query, NULL, NULL));
+    return AsStatus(ExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
 }
 
-TStatus DropSeries(TSession session, void *) {
+YdbStatus DropSeries(YdbSession session, void *) {
     char *query = "DROP TABLE series";
-    return AsStatus(ExecuteQuerySync(session, query, NULL, NULL));
+    return AsStatus(ExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
 }
 
-TStatus DropSeasons(TSession session, void *) {
+YdbStatus DropSeasons(YdbSession session, void *) {
     char *query = "DROP TABLE seasons";
-    return AsStatus(ExecuteQuerySync(session, query, NULL, NULL));
+    return AsStatus(ExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
 }
 
-TStatus DropEpisodes(TSession session, void *) {
+YdbStatus DropEpisodes(YdbSession session, void *) {
     char *query = "DROP TABLE episodes";
-    return AsStatus(ExecuteQuerySync(session, query, NULL, NULL));
+    return AsStatus(ExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
 }
 
-TStatus FillData(TSession session, void*) {
+YdbStatus FillData(YdbSession session, void*) {
     char* query = 
         "DECLARE $seriesData AS List<Struct<\n"
             "series_id: Uint64,\n"
@@ -110,13 +110,13 @@ TStatus FillData(TSession session, void*) {
             "CAST(air_date AS Uint16) AS air_date\n"
         "FROM AS_TABLE($episodesData);\n";
 
-    TParams params = CreateParams();
+    YdbParams params = CreateParams();
 
-    TTx tx = {.mode = TX_SERIALIZABLE_RW, .commit = true};
+    YdbTx tx = {.mode = YDB_TX_SERIALIZABLE_RW, .commit = true};
     return AsStatus(ExecuteQuerySync(session, query, &tx, params));
 }
 
-bool UnwrapStatus(TStatus status) {
+bool UnwrapStatus(YdbStatus status) {
     if (!IsSuccess(status)) {
         char *error = GetErrorMessage(status);
         fprintf(stderr, "fatal error: %s\n", error);
@@ -127,7 +127,7 @@ bool UnwrapStatus(TStatus status) {
     return true;
 }
 
-bool Run(TQueryClient *client) {
+bool Run(YdbQueryClient client) {
     if (!(UnwrapStatus(RetryQuerySync(client, &CreateSeries, NULL))
             && UnwrapStatus(RetryQuerySync(client, &CreateSeasons, NULL))
             && UnwrapStatus(RetryQuerySync(client, &CreateEpisodes, NULL)))) {
@@ -148,12 +148,12 @@ bool Run(TQueryClient *client) {
 }
 
 int main() {
-    TDriverConfig *config = CreateDriverConfig();
+    YdbDriverConfig config = CreateDriverConfig();
     DriverConfigSetEndpoint(config, "localhost:2136");
     DriverConfigSetDatabase(config, "/Root/test");
 
-    TDriver *driver = CreateDriver(config);
-    TQueryClient *client = CreateQueryClient(driver);
+    YdbDriver driver = CreateDriver(config);
+    YdbQueryClient client = CreateQueryClient(driver);
 
     bool ok = Run(client);
 
