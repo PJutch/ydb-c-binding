@@ -38,7 +38,7 @@ YDB_C_SDK_PARAM_ACTION_ARG(Uint8, uint8_t)
 YDB_C_SDK_PARAM_ACTION_ARG(Uint64, uint64_t)
 
 void YdbParamDate(YdbParamValueBuilder builder, YdbInstant value) { 
-    FROM_OPAQUE(NYdb::TParamValueBuilder, builder).Date(FROM_OPAQUE(TInstant, value));
+    FROM_OPAQUE(NYdb::TParamValueBuilder, builder).Date(TInstant::FromValue(value));
 }
 
 void YdbBuildParamValue(YdbParamValueBuilder builder) {

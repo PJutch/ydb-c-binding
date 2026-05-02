@@ -51,8 +51,8 @@ uint64_t YdbParseUint64(YdbValueParser parser, bool* exists);
 // May return NULL
 char* YdbParseUtf8(YdbValueParser parser);
 
-// May return NULL_INSTANT
-YdbInstant YdbParseDate(YdbValueParser parser);
+// ok may be NULL to ignore errors
+YdbInstant YdbParseDate(YdbValueParser parser, bool* ok);
 
 #ifdef __cplusplus
 }

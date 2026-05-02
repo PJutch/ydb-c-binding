@@ -9,14 +9,9 @@
 extern "C" {
 #endif
 
-YDB_C_SDK_OPAQUE_STRUCT(YdbInstant)
+typedef uint64_t YdbInstant;
 
-void YdbDestroyInstant(YdbInstant instant);
-
-#define YDB_NULL_INSTANT (YdbInstant){NULL}
-
-YdbInstant YdbInstantZero();
-YdbInstant YdbInstantMax();
+#define YDB_INSTANT_MAX UINT64_MAX
 
 YdbInstant YdbInstantNow();
 
@@ -52,14 +47,9 @@ YdbInstant YdbInstantParseRfc822(char* instant, bool* ok);
 YdbInstant YdbInstantParseHttp(char* instant, bool* ok);
 YdbInstant YdbInstantParseX509(char* instant, bool* ok);
 
-YDB_C_SDK_OPAQUE_STRUCT(YdbDuration)
+typedef uint64_t YdbDuration;
 
-void YdbDestroyDuration(YdbDuration duration);
-
-#define YDB_NULL_DURATION (YdbDuration){NULL}
-
-YdbDuration YdbDurationZero();
-YdbDuration YdbDurationMax();
+#define YDB_DURATION_MAX UINT64_MAX
 
 YdbDuration YdbDurationFromDays(uint64_t value);
 YdbDuration YdbDurationFromHours(uint64_t value);
@@ -79,14 +69,6 @@ uint64_t YdbDurationToSeconds(YdbDuration duration);
 char* YdbDurationToString(YdbDuration duration);
 
 YdbDuration YdbDurationParse(char* duration, bool* ok);
-
-YdbDuration YdbInstantDifference(YdbInstant past, YdbInstant future);
-YdbInstant YdbInstantAfter(YdbInstant base, YdbDuration duration);
-YdbInstant YdbInstantBefore(YdbInstant base, YdbDuration duration);
-
-YdbDuration YdbDurationSum(YdbDuration first, YdbDuration second);
-YdbDuration YdbDurationDiff(YdbDuration first, YdbDuration second);
-
 
 #ifdef __cplusplus
 }

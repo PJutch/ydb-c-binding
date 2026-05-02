@@ -92,11 +92,17 @@ char* YdbParseUtf8(YdbValueParser parser) {
     }
 }
 
-YdbInstant YdbParseDate(YdbValueParser parser) {
+YdbInstant YdbParseDate(YdbValueParser parser, bool* ok) {
     if (auto result = FROM_OPAQUE(NYdb::TValueParser, parser).GetOptionalDate()) {
-        return {new TInstant{*result}};
+        if (ok) {
+            *ok = true;
+        }
+        return result->GetValue();
     } else {
-        return YDB_NULL_INSTANT;
+        if (ok) {
+            *ok = false;
+        }
+        return YDB_INSTANT_MAX;
     }
 }
 

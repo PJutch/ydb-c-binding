@@ -227,8 +227,9 @@ bool Run(YdbQueryClient client) {
         }
 
         printf(", Release date: ");
-        YdbInstant release_date = YdbParseDate(YdbColumnParser(parser, "release_date"));
-        if (release_date.data) {
+        bool parsed_date;
+        YdbInstant release_date = YdbParseDate(YdbColumnParser(parser, "release_date"), &parsed_date);
+        if (parsed_date) {
             printf("%s", YdbFormatLocalTime(release_date, "%Y-%m-%d"));
         } else {
             printf("(NULL)");
