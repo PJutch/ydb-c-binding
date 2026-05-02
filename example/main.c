@@ -142,6 +142,41 @@ YdbStatus UpsertSimple(YdbSession session, void* data) {
     return YdbAsStatus(YdbExecuteQuerySync(session, query, &tx, YDB_NULL_PARAMS));
 }
 
+YdbStatus SelectWithParams(YdbSession session, void* data) {
+    YdbResultSet* result_set = (YdbResultSet*) data;
+
+    uint64_t seriesId = 2;
+    uint64_t seasonId = 3;
+    char* query = 
+        "DECLARE $seriesId AS Uint64;\n"
+        "DECLARE $seasonId AS Uint64;\n"
+        "SELECT sa.title AS season_title, sr.title AS series_title\n"
+        "FROM seasons AS sa\n"
+        "INNER JOIN series AS sr\n"
+        "ON sa.series_id = sr.series_id\n"
+        "WHERE sa.series_id = $seriesId AND sa.season_id = $seasonId;\n";
+
+    YdbParamsBuilder params_builder = YdbCreateParamsBuilder();
+    
+        YdbParamValueBuilder series_id_param = YdbAddParam(params_builder, "$seriesId");
+            YdbParamUint64(series_id_param, seriesId);
+            YdbBuildParamValue(series_id_param);
+
+        YdbParamValueBuilder season_id_param = YdbAddParam(params_builder, "$seasonId");
+            YdbParamUint64(season_id_param, seriesId);
+            YdbBuildParamValue(season_id_param);
+    YdbParams params = YdbBuildParams(params_builder);
+
+    YdbTx tx = {.mode = YDB_TX_SERIALIZABLE_RW, .commit = true};
+    YdbQueryResult result = YdbExecuteQuerySync(session, query, &tx, params);
+
+    if (YdbIsSuccess(YdbAsStatus(result))) {
+        *result_set = YdbGetResultSet(result, 0);
+    }
+
+    return YdbAsStatus(result);
+}
+
 
 bool UnwrapStatus(YdbStatus status) {
     if (!YdbIsSuccess(status)) {
@@ -204,6 +239,33 @@ bool Run(YdbQueryClient client) {
     
     if (!UnwrapStatus(YdbRetryQuerySync(client, &UpsertSimple, NULL))) {
         return false;
+    }
+
+    if (!UnwrapStatus(YdbRetryQuerySync(client, &SelectWithParams, &result_set))) {
+        return false;
+    }
+    
+    parser = YdbCreateResultSetParser(result_set);
+    if (YdbNextRow(parser)) {
+        printf("> SelectWithParams:\nSeason");
+        
+        printf(", Title: ");
+        char* title = YdbParseUtf8(YdbColumnParser(parser, "season_title"));
+        if (title) {
+            printf("%s", title);
+        } else {
+            printf("(NULL)");
+        }
+
+        printf(", Series title: ");
+        char* series_title = YdbParseUtf8(YdbColumnParser(parser, "series_title"));
+        if (series_title) {
+            printf("%s", series_title);
+        } else {
+            printf("(NULL)");
+        }
+
+        printf("\n");
     }
     
     if (!(UnwrapStatus(YdbRetryQuerySync(client, &DropSeries, NULL))
