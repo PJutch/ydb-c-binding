@@ -133,6 +133,16 @@ YdbStatus SelectSimple(YdbSession session, void* data) {
     return YdbAsStatus(result);
 }
 
+YdbStatus UpsertSimple(YdbSession session, void* data) {
+    char* query = 
+        "UPSERT INTO episodes (series_id, season_id, episode_id, title) VALUES\n"
+            "(2, 6, 1, \"TBD\");" ;
+
+    YdbTx tx = {.mode = YDB_TX_SERIALIZABLE_RW, .commit = true};
+    return YdbAsStatus(YdbExecuteQuerySync(session, query, &tx, YDB_NULL_PARAMS));
+}
+
+
 bool UnwrapStatus(YdbStatus status) {
     if (!YdbIsSuccess(status)) {
         char *error = YdbGetErrorMessage(status);
@@ -190,6 +200,10 @@ bool Run(YdbQueryClient client) {
         }
 
         printf("\n");
+    }
+    
+    if (!UnwrapStatus(YdbRetryQuerySync(client, &UpsertSimple, NULL))) {
+        return false;
     }
     
     if (!(UnwrapStatus(YdbRetryQuerySync(client, &DropSeries, NULL))
