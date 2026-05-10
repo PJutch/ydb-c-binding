@@ -18,25 +18,29 @@ void YdbDestroyQueryClient(YdbQueryClient client);
 
 YDB_C_SDK_OPAQUE_STRUCT(YdbSession)
 
-typedef enum YdbxMode {
+typedef enum YdbTxMode {
     YDB_TX_SERIALIZABLE_RW,
     YDB_TX_ONLINE_RO,
     YDB_TX_STALE_RO,
     YDB_TX_SNAPSHOT_RO,
     YDB_TX_SNAPSHOT_RW,
     YDB_TX_TRANSACTION,
-} YdbxMode;
+} YdbTxMode;
 
 YDB_C_SDK_OPAQUE_STRUCT(YdbTransaction)
 
+#define NULL_TRANSACTION (YdbTransaction){NULL};
+
 typedef struct YdbTx {
-    YdbxMode mode;
+    YdbTxMode mode;
     bool commit;
     bool allow_inconsistent_reads;
     YdbTransaction transaction;
 } YdbTx;
 
 YdbQueryResult YdbExecuteQuerySync(YdbSession session, char* query, YdbTx* tx, YdbParams params);
+
+YdbTransaction YdbQueryTransaction(YdbQueryResult result);
 
 typedef YdbStatus (*YdbSyncRetryable) (YdbSession session, void* data);
 

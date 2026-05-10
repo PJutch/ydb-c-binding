@@ -18,7 +18,7 @@ void YdbDestroyQueryClient(YdbQueryClient client) {
 }
 
 // expects mode != YdbX_TRANSACTION
-static NYdb::NQuery::TTxSettings YdbCreateTxSettings(YdbxMode mode, bool allow_inconsistent_reads) {
+static NYdb::NQuery::TTxSettings YdbCreateTxSettings(YdbTxMode mode, bool allow_inconsistent_reads) {
     switch (mode) {
     case YDB_TX_SERIALIZABLE_RW:
         return NYdb::NQuery::TTxSettings::SerializableRW();
@@ -56,6 +56,14 @@ YdbQueryResult YdbExecuteQuerySync(YdbSession session_, char* query, YdbTx* tx_,
     auto future = params ? session.ExecuteQuery(query, YdbCreateTx(tx_), *params) 
                          : session.ExecuteQuery(query, YdbCreateTx(tx_));
     return {static_cast<void*>(new NYdb::NQuery::TExecuteQueryResult{future.GetValueSync()})};
+}
+
+YdbTransaction YdbQueryTransaction(YdbQueryResult result) {
+    if (auto transaction = FROM_OPAQUE(NYdb::NQuery::TExecuteQueryResult, result).GetTransaction()) {
+        return TO_NEW_OPAQUE(NYdb::NQuery::TTransaction, *transaction);
+    } else {
+        return NULL_TRANSACTION;
+    }
 }
 
 YdbStatus YdbRetryQuerySync(YdbQueryClient client, YdbSyncRetryable query, void* data) {

@@ -157,11 +157,9 @@ YdbStatus SelectWithParams(YdbSession session, void* data) {
         "WHERE sa.series_id = $seriesId AND sa.season_id = $seasonId;\n";
 
     YdbParamsBuilder params_builder = YdbCreateParamsBuilder();
-    
         YdbParamValueBuilder series_id_param = YdbAddParam(params_builder, "$seriesId");
             YdbParamUint64(series_id_param, seriesId);
             YdbBuildParamValue(series_id_param);
-
         YdbParamValueBuilder season_id_param = YdbAddParam(params_builder, "$seasonId");
             YdbParamUint64(season_id_param, seriesId);
             YdbBuildParamValue(season_id_param);
@@ -177,6 +175,79 @@ YdbStatus SelectWithParams(YdbSession session, void* data) {
     return YdbAsStatus(result);
 }
 
+YdbStatus MultiStep(YdbSession session, void* data) {
+    YdbResultSet* result_set = (YdbResultSet*) data;
+
+    uint64_t seriesId = 2;
+    uint64_t seasonId = 5;
+    char* query1 =
+        "DECLARE $seriesId AS Uint64;\n"
+        "DECLARE $seasonId AS Uint64;\n"
+        "SELECT first_aired AS from_date FROM seasons\n"
+        "WHERE series_id = $seriesId AND season_id = $seasonId;\n";
+
+    YdbParamsBuilder params1_builder = YdbCreateParamsBuilder();
+        YdbParamValueBuilder series_id_param = YdbAddParam(params1_builder, "$seriesId");
+            YdbParamUint64(series_id_param, seriesId);
+            YdbBuildParamValue(series_id_param);
+        YdbParamValueBuilder season_id_param = YdbAddParam(params1_builder, "$seasonId");
+            YdbParamUint64(season_id_param, seriesId);
+            YdbBuildParamValue(season_id_param);
+    YdbParams params1 = YdbBuildParams(params1_builder);
+
+    // Execute the first query to retrieve the required values for the client.
+    // Transaction control settings do not set the CommitTx flag, allowing the transaction to remain active
+    // after query execution.
+    YdbTx tx1 = {.mode = YDB_TX_SERIALIZABLE_RW};
+    YdbQueryResult result1 = YdbExecuteQuerySync(session, query1, &tx1, params1);
+
+    if (!YdbIsSuccess(YdbAsStatus(result1))) {
+        return YdbAsStatus(result1);
+    }
+
+    // Get the active transaction id
+    YdbTransaction transaction = YdbQueryTransaction(result1);
+
+    // Processing the request result
+    YdbResultSetParser parser = YdbCreateResultSetParser(YdbGetResultSet(result1, 0));
+    YdbNextRow(parser);
+
+    bool date_exists;
+    YdbInstant from_date = YdbInstantFromDays(YdbParseUint64(YdbColumnParser(parser, "from_date"), &date_exists));
+    YdbInstant to_date = from_date + YdbDurationFromDays(15);
+
+    // Construct next query based on the results of client logic
+    char* query2 = 
+        "DECLARE $seriesId AS Uint64;\n"
+        "DECLARE $fromDate AS Uint64;\n"
+        "DECLARE $toDate AS Uint64;\n"
+        "SELECT season_id, episode_id, title, air_date FROM episodes\n"
+        "WHERE series_id = $seriesId AND air_date >= $fromDate AND air_date <= $toDate;\n";
+
+    YdbParamsBuilder params2_builder = YdbCreateParamsBuilder();
+        YdbParamValueBuilder series_id_param2 = YdbAddParam(params2_builder, "$seriesId");
+            YdbParamUint64(series_id_param, seriesId);
+            YdbBuildParamValue(series_id_param);
+        YdbParamValueBuilder from_date_param = YdbAddParam(params2_builder, "$fromDate");
+            YdbParamUint64(from_date_param, YdbInstantToDays(from_date));
+            YdbBuildParamValue(from_date_param);
+        YdbParamValueBuilder to_date_param = YdbAddParam(params2_builder, "$toDate");
+            YdbParamUint64(to_date_param, YdbInstantToDays(to_date));
+            YdbBuildParamValue(to_date_param);
+    YdbParams params2 = YdbBuildParams(params2_builder);
+
+    // Execute the second query.
+    // The transaction control settings continue the active transaction (tx)
+    // and commit it at the end of the second query execution.
+    YdbTx tx2 = {.mode = YDB_TX_TRANSACTION, .transaction = transaction, .commit = true};
+    YdbQueryResult result2 = YdbExecuteQuerySync(session, query2, &tx2, params2);
+    
+    if (!YdbIsSuccess(YdbAsStatus(result2))) {
+        return YdbAsStatus(result2);
+    }
+    *result_set = YdbGetResultSet(result2, 0);
+    return YdbAsStatus(result2);
+}
 
 bool UnwrapStatus(YdbStatus status) {
     if (!YdbIsSuccess(status)) {
@@ -267,6 +338,36 @@ bool Run(YdbQueryClient client) {
         }
 
         printf("\n");
+    }
+
+    if (!UnwrapStatus(YdbRetryQuerySync(client, &MultiStep, &result_set))) {
+        return false;
+    }
+
+    parser = YdbCreateResultSetParser(result_set);
+    printf("> MultiStep:\n");
+    while (YdbNextRow(parser)) {
+        printf("Episode: ");
+        bool episode_id_exits;
+        uint64_t episode_id = YdbParseUint64(YdbColumnParser(parser, "episode_id"), &episode_id_exits);
+        printf("%lu", episode_id);
+
+        printf(", Season: ");
+        bool season_id_exits;
+        uint64_t season_id = YdbParseUint64(YdbColumnParser(parser, "season_id"), &season_id_exits);
+        printf("%lu", season_id);
+
+        printf(", Title: ");
+        char* title = YdbParseUtf8(YdbColumnParser(parser, "title"));
+        if (title) {
+            printf("%s", title);
+        } else {
+            printf("(NULL)");
+        }
+
+        bool air_date_exists;
+        YdbInstant air_date = YdbInstantFromDays(YdbParseUint64(YdbColumnParser(parser, "air_date"), &air_date_exists));
+        printf(", Air date: %s\n", YdbFormatLocalTime(air_date, "%a %b %d, %Y"));
     }
     
     if (!(UnwrapStatus(YdbRetryQuerySync(client, &DropSeries, NULL))
