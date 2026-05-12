@@ -14,12 +14,12 @@ YdbParamsBuilder YdbCreateParamsBuilder() {
 
 YdbParamValueBuilder YdbAddParam(YdbParamsBuilder builder, char* name) {
     return {static_cast<void*>(
-        &FROM_OPAQUE(NYdb::TParamsBuilder, builder).AddParam(name))};
+        &YdbFromOpaque<NYdb::TParamsBuilder>(builder).AddParam(name))};
 }
 
 #define YDB_C_SDK_PARAM_ACTION(name)                                           \
     void YdbParam##name(YdbParamValueBuilder builder) {                        \
-        FROM_OPAQUE(NYdb::TParamValueBuilder, builder).name();                 \
+        YdbFromOpaque<NYdb::TParamValueBuilder>(builder).name();               \
     }
 
 YDB_C_SDK_PARAM_ACTION(BeginList)
@@ -30,7 +30,7 @@ YDB_C_SDK_PARAM_ACTION(EndStruct)
 
 #define YDB_C_SDK_PARAM_ACTION_ARG(name, arg_type)                             \
     void YdbParam##name(YdbParamValueBuilder builder, arg_type value) {        \
-        FROM_OPAQUE(NYdb::TParamValueBuilder, builder).name(value);            \
+        YdbFromOpaque<NYdb::TParamValueBuilder>(builder).name(value);          \
     }
 
 YDB_C_SDK_PARAM_ACTION_ARG(AddMember, char*)
@@ -39,20 +39,20 @@ YDB_C_SDK_PARAM_ACTION_ARG(Uint8, uint8_t)
 YDB_C_SDK_PARAM_ACTION_ARG(Uint64, uint64_t)
 
 void YdbParamDate(YdbParamValueBuilder builder, YdbInstant value) {
-    FROM_OPAQUE(NYdb::TParamValueBuilder, builder)
-        .Date(TInstant::FromValue(value));
+    YdbFromOpaque<NYdb::TParamValueBuilder>(builder).Date(
+        TInstant::FromValue(value));
 }
 
 void YdbBuildParamValue(YdbParamValueBuilder builder) {
-    FROM_OPAQUE(NYdb::TParamValueBuilder, builder).Build();
+    YdbFromOpaque<NYdb::TParamValueBuilder>(builder).Build();
 }
 
 YdbParams YdbBuildParams(YdbParamsBuilder builder) {
-    return {static_cast<void*>(
-        new NYdb::TParams{FROM_OPAQUE(NYdb::TParamsBuilder, builder).Build()})};
+    return {static_cast<void*>(new NYdb::TParams{
+        YdbFromOpaque<NYdb::TParamsBuilder>(builder).Build()})};
 }
 
 void YdbDestroyParams(YdbParams params) {
-    delete PTR_FROM_OPAQUE(NYdb::TParams, params);
+    delete YdbPtrFromOpaque<NYdb::TParams>(params);
 }
 }

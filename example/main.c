@@ -7,8 +7,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-YdbStatus CreateSeries(YdbSession session, void *) {
-    char *query = "CREATE TABLE series ("
+YdbStatus CreateSeries(YdbSession session, void*) {
+    char* query = "CREATE TABLE series ("
                   "    series_id Uint64,"
                   "    title Utf8,"
                   "    series_info Utf8,"
@@ -20,8 +20,8 @@ YdbStatus CreateSeries(YdbSession session, void *) {
         YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
 }
 
-YdbStatus CreateSeasons(YdbSession session, void *) {
-    char *query = "CREATE TABLE seasons ("
+YdbStatus CreateSeasons(YdbSession session, void*) {
+    char* query = "CREATE TABLE seasons ("
                   "    series_id Uint64,"
                   "    season_id Uint64,"
                   "    title Utf8,"
@@ -34,8 +34,8 @@ YdbStatus CreateSeasons(YdbSession session, void *) {
         YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
 }
 
-YdbStatus CreateEpisodes(YdbSession session, void *) {
-    char *query = "CREATE TABLE episodes ("
+YdbStatus CreateEpisodes(YdbSession session, void*) {
+    char* query = "CREATE TABLE episodes ("
                   "    series_id Uint64,"
                   "    season_id Uint64,"
                   "    episode_id Uint64,"
@@ -47,26 +47,26 @@ YdbStatus CreateEpisodes(YdbSession session, void *) {
         YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
 }
 
-YdbStatus DropSeries(YdbSession session, void *) {
-    char *query = "DROP TABLE series";
+YdbStatus DropSeries(YdbSession session, void*) {
+    char* query = "DROP TABLE series";
     return YdbAsStatus(
         YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
 }
 
-YdbStatus DropSeasons(YdbSession session, void *) {
-    char *query = "DROP TABLE seasons";
+YdbStatus DropSeasons(YdbSession session, void*) {
+    char* query = "DROP TABLE seasons";
     return YdbAsStatus(
         YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
 }
 
-YdbStatus DropEpisodes(YdbSession session, void *) {
-    char *query = "DROP TABLE episodes";
+YdbStatus DropEpisodes(YdbSession session, void*) {
+    char* query = "DROP TABLE episodes";
     return YdbAsStatus(
         YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
 }
 
-YdbStatus FillData(YdbSession session, void *) {
-    char *query = "DECLARE $seriesData AS List<Struct<\n"
+YdbStatus FillData(YdbSession session, void*) {
+    char* query = "DECLARE $seriesData AS List<Struct<\n"
                   "series_id: Uint64,\n"
                   "title: Utf8,\n"
                   "series_info: Utf8,\n"
@@ -118,10 +118,10 @@ YdbStatus FillData(YdbSession session, void *) {
     return YdbAsStatus(YdbExecuteQuerySync(session, query, &tx, params));
 }
 
-YdbStatus SelectSimple(YdbSession session, void *data) {
-    YdbResultSet *result_set = (YdbResultSet *)data;
+YdbStatus SelectSimple(YdbSession session, void* data) {
+    YdbResultSet* result_set = (YdbResultSet*)data;
 
-    char *query =
+    char* query =
         "SELECT series_id, title, CAST(release_date AS Date) AS release_date\n"
         "FROM series\n"
         "WHERE series_id = 1;";
@@ -136,8 +136,8 @@ YdbStatus SelectSimple(YdbSession session, void *data) {
     return YdbAsStatus(result);
 }
 
-YdbStatus UpsertSimple(YdbSession session, void *data) {
-    char *query = "UPSERT INTO episodes (series_id, season_id, episode_id, "
+YdbStatus UpsertSimple(YdbSession session, void* data) {
+    char* query = "UPSERT INTO episodes (series_id, season_id, episode_id, "
                   "title) VALUES\n"
                   "(2, 6, 1, \"TBD\");";
 
@@ -146,12 +146,12 @@ YdbStatus UpsertSimple(YdbSession session, void *data) {
         YdbExecuteQuerySync(session, query, &tx, YDB_NULL_PARAMS));
 }
 
-YdbStatus SelectWithParams(YdbSession session, void *data) {
-    YdbResultSet *result_set = (YdbResultSet *)data;
+YdbStatus SelectWithParams(YdbSession session, void* data) {
+    YdbResultSet* result_set = (YdbResultSet*)data;
 
     uint64_t seriesId = 2;
     uint64_t seasonId = 3;
-    char *query =
+    char* query =
         "DECLARE $seriesId AS Uint64;\n"
         "DECLARE $seasonId AS Uint64;\n"
         "SELECT sa.title AS season_title, sr.title AS series_title\n"
@@ -181,12 +181,12 @@ YdbStatus SelectWithParams(YdbSession session, void *data) {
     return YdbAsStatus(result);
 }
 
-YdbStatus MultiStep(YdbSession session, void *data) {
-    YdbResultSet *result_set = (YdbResultSet *)data;
+YdbStatus MultiStep(YdbSession session, void* data) {
+    YdbResultSet* result_set = (YdbResultSet*)data;
 
     uint64_t seriesId = 2;
     uint64_t seasonId = 5;
-    char *query1 = "DECLARE $seriesId AS Uint64;\n"
+    char* query1 = "DECLARE $seriesId AS Uint64;\n"
                    "DECLARE $seasonId AS Uint64;\n"
                    "SELECT first_aired AS from_date FROM seasons\n"
                    "WHERE series_id = $seriesId AND season_id = $seasonId;\n";
@@ -227,7 +227,7 @@ YdbStatus MultiStep(YdbSession session, void *data) {
     YdbInstant to_date = from_date + YdbDurationFromDays(15);
 
     // Construct next query based on the results of client logic
-    char *query2 =
+    char* query2 =
         "DECLARE $seriesId AS Uint64;\n"
         "DECLARE $fromDate AS Uint64;\n"
         "DECLARE $toDate AS Uint64;\n"
@@ -267,7 +267,7 @@ YdbStatus MultiStep(YdbSession session, void *data) {
 
 bool UnwrapStatus(YdbStatus status) {
     if (!YdbIsSuccess(status)) {
-        char *error = YdbGetErrorMessage(status);
+        char* error = YdbGetErrorMessage(status);
         fprintf(stderr, "fatal error: %s\n", error);
         free(error);
         return false;
@@ -307,7 +307,7 @@ bool Run(YdbQueryClient client) {
         }
 
         printf(", Title: ");
-        char *title = YdbParseUtf8(YdbColumnParser(parser, "title"));
+        char* title = YdbParseUtf8(YdbColumnParser(parser, "title"));
         if (title) {
             printf("%s", title);
         } else {
@@ -341,7 +341,7 @@ bool Run(YdbQueryClient client) {
         printf("> SelectWithParams:\nSeason");
 
         printf(", Title: ");
-        char *title = YdbParseUtf8(YdbColumnParser(parser, "season_title"));
+        char* title = YdbParseUtf8(YdbColumnParser(parser, "season_title"));
         if (title) {
             printf("%s", title);
         } else {
@@ -349,7 +349,7 @@ bool Run(YdbQueryClient client) {
         }
 
         printf(", Series title: ");
-        char *series_title =
+        char* series_title =
             YdbParseUtf8(YdbColumnParser(parser, "series_title"));
         if (series_title) {
             printf("%s", series_title);
@@ -380,7 +380,7 @@ bool Run(YdbQueryClient client) {
         printf("%lu", season_id);
 
         printf(", Title: ");
-        char *title = YdbParseUtf8(YdbColumnParser(parser, "title"));
+        char* title = YdbParseUtf8(YdbColumnParser(parser, "title"));
         if (title) {
             printf("%s", title);
         } else {
