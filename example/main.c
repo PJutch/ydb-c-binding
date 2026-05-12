@@ -3,112 +3,114 @@
 #include <ydb-c-sdk.h>
 
 #include <stdbool.h>
-#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 YdbStatus CreateSeries(YdbSession session, void *) {
-    char *query =
-        "CREATE TABLE series ("
-        "    series_id Uint64,"
-        "    title Utf8,"
-        "    series_info Utf8,"
-        "    release_date Uint64,"
-        "    PRIMARY KEY (series_id)"
-        ");";
+    char *query = "CREATE TABLE series ("
+                  "    series_id Uint64,"
+                  "    title Utf8,"
+                  "    series_info Utf8,"
+                  "    release_date Uint64,"
+                  "    PRIMARY KEY (series_id)"
+                  ");";
 
-    return YdbAsStatus(YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
+    return YdbAsStatus(
+        YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
 }
 
 YdbStatus CreateSeasons(YdbSession session, void *) {
-    char *query =
-        "CREATE TABLE seasons ("
-        "    series_id Uint64,"
-        "    season_id Uint64,"
-        "    title Utf8,"
-        "    first_aired Uint64,"
-        "    last_aired Uint64,"
-        "    PRIMARY KEY (series_id, season_id)"
-        ");";
+    char *query = "CREATE TABLE seasons ("
+                  "    series_id Uint64,"
+                  "    season_id Uint64,"
+                  "    title Utf8,"
+                  "    first_aired Uint64,"
+                  "    last_aired Uint64,"
+                  "    PRIMARY KEY (series_id, season_id)"
+                  ");";
 
-    return YdbAsStatus(YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
+    return YdbAsStatus(
+        YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
 }
 
 YdbStatus CreateEpisodes(YdbSession session, void *) {
-    char *query =
-        "CREATE TABLE episodes ("
-        "    series_id Uint64,"
-        "    season_id Uint64,"
-        "    episode_id Uint64,"
-        "    title Utf8,"
-        "    air_date Uint64,"
-        "    PRIMARY KEY (series_id, season_id, episode_id)"
-        ");";
-    return YdbAsStatus(YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
+    char *query = "CREATE TABLE episodes ("
+                  "    series_id Uint64,"
+                  "    season_id Uint64,"
+                  "    episode_id Uint64,"
+                  "    title Utf8,"
+                  "    air_date Uint64,"
+                  "    PRIMARY KEY (series_id, season_id, episode_id)"
+                  ");";
+    return YdbAsStatus(
+        YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
 }
 
 YdbStatus DropSeries(YdbSession session, void *) {
     char *query = "DROP TABLE series";
-    return YdbAsStatus(YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
+    return YdbAsStatus(
+        YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
 }
 
 YdbStatus DropSeasons(YdbSession session, void *) {
     char *query = "DROP TABLE seasons";
-    return YdbAsStatus(YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
+    return YdbAsStatus(
+        YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
 }
 
 YdbStatus DropEpisodes(YdbSession session, void *) {
     char *query = "DROP TABLE episodes";
-    return YdbAsStatus(YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
+    return YdbAsStatus(
+        YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
 }
 
-YdbStatus FillData(YdbSession session, void*) {
-    char* query = 
-        "DECLARE $seriesData AS List<Struct<\n"
-            "series_id: Uint64,\n"
-            "title: Utf8,\n"
-            "series_info: Utf8,\n"
-            "release_date: Date>>;\n"
-           "\n"
-        "DECLARE $seasonsData AS List<Struct<\n"
-            "series_id: Uint64,\n"
-            "season_id: Uint64,\n"
-            "title: Utf8,\n"
-            "first_aired: Date,\n"
-            "last_aired: Date>>;\n"
-           "\n"
-        "DECLARE $episodesData AS List<Struct<\n"
-            "series_id: Uint64,\n"
-            "season_id: Uint64,\n"
-            "episode_id: Uint64,\n"
-            "title: Utf8,\n"
-            "air_date: Date>>;\n"
-           "\n"
-        "REPLACE INTO series\n"
-        "SELECT\n"
-            "series_id,\n"
-            "title,\n"
-            "series_info,\n"
-            "CAST(release_date AS Uint16) AS release_date\n"
-        "FROM AS_TABLE($seriesData);\n"
-       "\n"
-        "REPLACE INTO seasons\n"
-        "SELECT\n"
-            "series_id,\n"
-            "season_id,\n"
-            "title,\n"
-            "CAST(first_aired AS Uint16) AS first_aired,\n"
-            "CAST(last_aired AS Uint16) AS last_aired\n"
-        "FROM AS_TABLE($seasonsData);\n"
-       "\n"
-        "REPLACE INTO episodes\n"
-        "SELECT\n"
-            "series_id,\n"
-            "season_id,\n"
-            "episode_id,\n"
-            "title,\n"
-            "CAST(air_date AS Uint16) AS air_date\n"
-        "FROM AS_TABLE($episodesData);\n";
+YdbStatus FillData(YdbSession session, void *) {
+    char *query = "DECLARE $seriesData AS List<Struct<\n"
+                  "series_id: Uint64,\n"
+                  "title: Utf8,\n"
+                  "series_info: Utf8,\n"
+                  "release_date: Date>>;\n"
+                  "\n"
+                  "DECLARE $seasonsData AS List<Struct<\n"
+                  "series_id: Uint64,\n"
+                  "season_id: Uint64,\n"
+                  "title: Utf8,\n"
+                  "first_aired: Date,\n"
+                  "last_aired: Date>>;\n"
+                  "\n"
+                  "DECLARE $episodesData AS List<Struct<\n"
+                  "series_id: Uint64,\n"
+                  "season_id: Uint64,\n"
+                  "episode_id: Uint64,\n"
+                  "title: Utf8,\n"
+                  "air_date: Date>>;\n"
+                  "\n"
+                  "REPLACE INTO series\n"
+                  "SELECT\n"
+                  "series_id,\n"
+                  "title,\n"
+                  "series_info,\n"
+                  "CAST(release_date AS Uint16) AS release_date\n"
+                  "FROM AS_TABLE($seriesData);\n"
+                  "\n"
+                  "REPLACE INTO seasons\n"
+                  "SELECT\n"
+                  "series_id,\n"
+                  "season_id,\n"
+                  "title,\n"
+                  "CAST(first_aired AS Uint16) AS first_aired,\n"
+                  "CAST(last_aired AS Uint16) AS last_aired\n"
+                  "FROM AS_TABLE($seasonsData);\n"
+                  "\n"
+                  "REPLACE INTO episodes\n"
+                  "SELECT\n"
+                  "series_id,\n"
+                  "season_id,\n"
+                  "episode_id,\n"
+                  "title,\n"
+                  "CAST(air_date AS Uint16) AS air_date\n"
+                  "FROM AS_TABLE($episodesData);\n";
 
     YdbParams params = CreateParams();
 
@@ -116,16 +118,17 @@ YdbStatus FillData(YdbSession session, void*) {
     return YdbAsStatus(YdbExecuteQuerySync(session, query, &tx, params));
 }
 
-YdbStatus SelectSimple(YdbSession session, void* data) {
-    YdbResultSet* result_set = (YdbResultSet*) data;
+YdbStatus SelectSimple(YdbSession session, void *data) {
+    YdbResultSet *result_set = (YdbResultSet *)data;
 
-    char* query = 
+    char *query =
         "SELECT series_id, title, CAST(release_date AS Date) AS release_date\n"
         "FROM series\n"
         "WHERE series_id = 1;";
 
     YdbTx tx = {.mode = YDB_TX_SERIALIZABLE_RW, .commit = true};
-    YdbQueryResult result = YdbExecuteQuerySync(session, query, &tx, YDB_NULL_PARAMS);
+    YdbQueryResult result =
+        YdbExecuteQuerySync(session, query, &tx, YDB_NULL_PARAMS);
     if (YdbIsSuccess(YdbAsStatus(result))) {
         *result_set = YdbGetResultSet(result, 0);
         return YdbAsStatus(result);
@@ -133,21 +136,22 @@ YdbStatus SelectSimple(YdbSession session, void* data) {
     return YdbAsStatus(result);
 }
 
-YdbStatus UpsertSimple(YdbSession session, void* data) {
-    char* query = 
-        "UPSERT INTO episodes (series_id, season_id, episode_id, title) VALUES\n"
-            "(2, 6, 1, \"TBD\");" ;
+YdbStatus UpsertSimple(YdbSession session, void *data) {
+    char *query = "UPSERT INTO episodes (series_id, season_id, episode_id, "
+                  "title) VALUES\n"
+                  "(2, 6, 1, \"TBD\");";
 
     YdbTx tx = {.mode = YDB_TX_SERIALIZABLE_RW, .commit = true};
-    return YdbAsStatus(YdbExecuteQuerySync(session, query, &tx, YDB_NULL_PARAMS));
+    return YdbAsStatus(
+        YdbExecuteQuerySync(session, query, &tx, YDB_NULL_PARAMS));
 }
 
-YdbStatus SelectWithParams(YdbSession session, void* data) {
-    YdbResultSet* result_set = (YdbResultSet*) data;
+YdbStatus SelectWithParams(YdbSession session, void *data) {
+    YdbResultSet *result_set = (YdbResultSet *)data;
 
     uint64_t seriesId = 2;
     uint64_t seasonId = 3;
-    char* query = 
+    char *query =
         "DECLARE $seriesId AS Uint64;\n"
         "DECLARE $seasonId AS Uint64;\n"
         "SELECT sa.title AS season_title, sr.title AS series_title\n"
@@ -157,12 +161,14 @@ YdbStatus SelectWithParams(YdbSession session, void* data) {
         "WHERE sa.series_id = $seriesId AND sa.season_id = $seasonId;\n";
 
     YdbParamsBuilder params_builder = YdbCreateParamsBuilder();
-        YdbParamValueBuilder series_id_param = YdbAddParam(params_builder, "$seriesId");
-            YdbParamUint64(series_id_param, seriesId);
-            YdbBuildParamValue(series_id_param);
-        YdbParamValueBuilder season_id_param = YdbAddParam(params_builder, "$seasonId");
-            YdbParamUint64(season_id_param, seriesId);
-            YdbBuildParamValue(season_id_param);
+    YdbParamValueBuilder series_id_param =
+        YdbAddParam(params_builder, "$seriesId");
+    YdbParamUint64(series_id_param, seriesId);
+    YdbBuildParamValue(series_id_param);
+    YdbParamValueBuilder season_id_param =
+        YdbAddParam(params_builder, "$seasonId");
+    YdbParamUint64(season_id_param, seriesId);
+    YdbBuildParamValue(season_id_param);
     YdbParams params = YdbBuildParams(params_builder);
 
     YdbTx tx = {.mode = YDB_TX_SERIALIZABLE_RW, .commit = true};
@@ -175,31 +181,33 @@ YdbStatus SelectWithParams(YdbSession session, void* data) {
     return YdbAsStatus(result);
 }
 
-YdbStatus MultiStep(YdbSession session, void* data) {
-    YdbResultSet* result_set = (YdbResultSet*) data;
+YdbStatus MultiStep(YdbSession session, void *data) {
+    YdbResultSet *result_set = (YdbResultSet *)data;
 
     uint64_t seriesId = 2;
     uint64_t seasonId = 5;
-    char* query1 =
-        "DECLARE $seriesId AS Uint64;\n"
-        "DECLARE $seasonId AS Uint64;\n"
-        "SELECT first_aired AS from_date FROM seasons\n"
-        "WHERE series_id = $seriesId AND season_id = $seasonId;\n";
+    char *query1 = "DECLARE $seriesId AS Uint64;\n"
+                   "DECLARE $seasonId AS Uint64;\n"
+                   "SELECT first_aired AS from_date FROM seasons\n"
+                   "WHERE series_id = $seriesId AND season_id = $seasonId;\n";
 
     YdbParamsBuilder params1_builder = YdbCreateParamsBuilder();
-        YdbParamValueBuilder series_id_param = YdbAddParam(params1_builder, "$seriesId");
-            YdbParamUint64(series_id_param, seriesId);
-            YdbBuildParamValue(series_id_param);
-        YdbParamValueBuilder season_id_param = YdbAddParam(params1_builder, "$seasonId");
-            YdbParamUint64(season_id_param, seriesId);
-            YdbBuildParamValue(season_id_param);
+    YdbParamValueBuilder series_id_param =
+        YdbAddParam(params1_builder, "$seriesId");
+    YdbParamUint64(series_id_param, seriesId);
+    YdbBuildParamValue(series_id_param);
+    YdbParamValueBuilder season_id_param =
+        YdbAddParam(params1_builder, "$seasonId");
+    YdbParamUint64(season_id_param, seriesId);
+    YdbBuildParamValue(season_id_param);
     YdbParams params1 = YdbBuildParams(params1_builder);
 
     // Execute the first query to retrieve the required values for the client.
-    // Transaction control settings do not set the CommitTx flag, allowing the transaction to remain active
-    // after query execution.
+    // Transaction control settings do not set the CommitTx flag, allowing the
+    // transaction to remain active after query execution.
     YdbTx tx1 = {.mode = YDB_TX_SERIALIZABLE_RW};
-    YdbQueryResult result1 = YdbExecuteQuerySync(session, query1, &tx1, params1);
+    YdbQueryResult result1 =
+        YdbExecuteQuerySync(session, query1, &tx1, params1);
 
     if (!YdbIsSuccess(YdbAsStatus(result1))) {
         return YdbAsStatus(result1);
@@ -209,39 +217,47 @@ YdbStatus MultiStep(YdbSession session, void* data) {
     YdbTransaction transaction = YdbQueryTransaction(result1);
 
     // Processing the request result
-    YdbResultSetParser parser = YdbCreateResultSetParser(YdbGetResultSet(result1, 0));
+    YdbResultSetParser parser =
+        YdbCreateResultSetParser(YdbGetResultSet(result1, 0));
     YdbNextRow(parser);
 
     bool date_exists;
-    YdbInstant from_date = YdbInstantFromDays(YdbParseUint64(YdbColumnParser(parser, "from_date"), &date_exists));
+    YdbInstant from_date = YdbInstantFromDays(
+        YdbParseUint64(YdbColumnParser(parser, "from_date"), &date_exists));
     YdbInstant to_date = from_date + YdbDurationFromDays(15);
 
     // Construct next query based on the results of client logic
-    char* query2 = 
+    char *query2 =
         "DECLARE $seriesId AS Uint64;\n"
         "DECLARE $fromDate AS Uint64;\n"
         "DECLARE $toDate AS Uint64;\n"
         "SELECT season_id, episode_id, title, air_date FROM episodes\n"
-        "WHERE series_id = $seriesId AND air_date >= $fromDate AND air_date <= $toDate;\n";
+        "WHERE series_id = $seriesId AND air_date >= $fromDate AND air_date <= "
+        "$toDate;\n";
 
     YdbParamsBuilder params2_builder = YdbCreateParamsBuilder();
-        YdbParamValueBuilder series_id_param2 = YdbAddParam(params2_builder, "$seriesId");
-            YdbParamUint64(series_id_param, seriesId);
-            YdbBuildParamValue(series_id_param);
-        YdbParamValueBuilder from_date_param = YdbAddParam(params2_builder, "$fromDate");
-            YdbParamUint64(from_date_param, YdbInstantToDays(from_date));
-            YdbBuildParamValue(from_date_param);
-        YdbParamValueBuilder to_date_param = YdbAddParam(params2_builder, "$toDate");
-            YdbParamUint64(to_date_param, YdbInstantToDays(to_date));
-            YdbBuildParamValue(to_date_param);
+    YdbParamValueBuilder series_id_param2 =
+        YdbAddParam(params2_builder, "$seriesId");
+    YdbParamUint64(series_id_param, seriesId);
+    YdbBuildParamValue(series_id_param);
+    YdbParamValueBuilder from_date_param =
+        YdbAddParam(params2_builder, "$fromDate");
+    YdbParamUint64(from_date_param, YdbInstantToDays(from_date));
+    YdbBuildParamValue(from_date_param);
+    YdbParamValueBuilder to_date_param =
+        YdbAddParam(params2_builder, "$toDate");
+    YdbParamUint64(to_date_param, YdbInstantToDays(to_date));
+    YdbBuildParamValue(to_date_param);
     YdbParams params2 = YdbBuildParams(params2_builder);
 
     // Execute the second query.
     // The transaction control settings continue the active transaction (tx)
     // and commit it at the end of the second query execution.
-    YdbTx tx2 = {.mode = YDB_TX_TRANSACTION, .transaction = transaction, .commit = true};
-    YdbQueryResult result2 = YdbExecuteQuerySync(session, query2, &tx2, params2);
-    
+    YdbTx tx2 = {
+        .mode = YDB_TX_TRANSACTION, .transaction = transaction, .commit = true};
+    YdbQueryResult result2 =
+        YdbExecuteQuerySync(session, query2, &tx2, params2);
+
     if (!YdbIsSuccess(YdbAsStatus(result2))) {
         return YdbAsStatus(result2);
     }
@@ -261,9 +277,9 @@ bool UnwrapStatus(YdbStatus status) {
 }
 
 bool Run(YdbQueryClient client) {
-    if (!(UnwrapStatus(YdbRetryQuerySync(client, &CreateSeries, NULL))
-            && UnwrapStatus(YdbRetryQuerySync(client, &CreateSeasons, NULL))
-            && UnwrapStatus(YdbRetryQuerySync(client, &CreateEpisodes, NULL)))) {
+    if (!(UnwrapStatus(YdbRetryQuerySync(client, &CreateSeries, NULL)) &&
+          UnwrapStatus(YdbRetryQuerySync(client, &CreateSeasons, NULL)) &&
+          UnwrapStatus(YdbRetryQuerySync(client, &CreateEpisodes, NULL)))) {
         return false;
     }
 
@@ -282,7 +298,8 @@ bool Run(YdbQueryClient client) {
 
         printf(", Id: ");
         bool id_exists;
-        uint64_t id = YdbParseUint64(YdbColumnParser(parser, "series_id"), &id_exists);
+        uint64_t id =
+            YdbParseUint64(YdbColumnParser(parser, "series_id"), &id_exists);
         if (id_exists) {
             printf("%lu", id);
         } else {
@@ -290,7 +307,7 @@ bool Run(YdbQueryClient client) {
         }
 
         printf(", Title: ");
-        char* title = YdbParseUtf8(YdbColumnParser(parser, "title"));
+        char *title = YdbParseUtf8(YdbColumnParser(parser, "title"));
         if (title) {
             printf("%s", title);
         } else {
@@ -299,7 +316,8 @@ bool Run(YdbQueryClient client) {
 
         printf(", Release date: ");
         bool parsed_date;
-        YdbInstant release_date = YdbParseDate(YdbColumnParser(parser, "release_date"), &parsed_date);
+        YdbInstant release_date =
+            YdbParseDate(YdbColumnParser(parser, "release_date"), &parsed_date);
         if (parsed_date) {
             printf("%s", YdbFormatLocalTime(release_date, "%Y-%m-%d"));
         } else {
@@ -308,21 +326,22 @@ bool Run(YdbQueryClient client) {
 
         printf("\n");
     }
-    
+
     if (!UnwrapStatus(YdbRetryQuerySync(client, &UpsertSimple, NULL))) {
         return false;
     }
 
-    if (!UnwrapStatus(YdbRetryQuerySync(client, &SelectWithParams, &result_set))) {
+    if (!UnwrapStatus(
+            YdbRetryQuerySync(client, &SelectWithParams, &result_set))) {
         return false;
     }
-    
+
     parser = YdbCreateResultSetParser(result_set);
     if (YdbNextRow(parser)) {
         printf("> SelectWithParams:\nSeason");
-        
+
         printf(", Title: ");
-        char* title = YdbParseUtf8(YdbColumnParser(parser, "season_title"));
+        char *title = YdbParseUtf8(YdbColumnParser(parser, "season_title"));
         if (title) {
             printf("%s", title);
         } else {
@@ -330,7 +349,8 @@ bool Run(YdbQueryClient client) {
         }
 
         printf(", Series title: ");
-        char* series_title = YdbParseUtf8(YdbColumnParser(parser, "series_title"));
+        char *series_title =
+            YdbParseUtf8(YdbColumnParser(parser, "series_title"));
         if (series_title) {
             printf("%s", series_title);
         } else {
@@ -349,16 +369,18 @@ bool Run(YdbQueryClient client) {
     while (YdbNextRow(parser)) {
         printf("Episode: ");
         bool episode_id_exits;
-        uint64_t episode_id = YdbParseUint64(YdbColumnParser(parser, "episode_id"), &episode_id_exits);
+        uint64_t episode_id = YdbParseUint64(
+            YdbColumnParser(parser, "episode_id"), &episode_id_exits);
         printf("%lu", episode_id);
 
         printf(", Season: ");
         bool season_id_exits;
-        uint64_t season_id = YdbParseUint64(YdbColumnParser(parser, "season_id"), &season_id_exits);
+        uint64_t season_id = YdbParseUint64(
+            YdbColumnParser(parser, "season_id"), &season_id_exits);
         printf("%lu", season_id);
 
         printf(", Title: ");
-        char* title = YdbParseUtf8(YdbColumnParser(parser, "title"));
+        char *title = YdbParseUtf8(YdbColumnParser(parser, "title"));
         if (title) {
             printf("%s", title);
         } else {
@@ -366,13 +388,15 @@ bool Run(YdbQueryClient client) {
         }
 
         bool air_date_exists;
-        YdbInstant air_date = YdbInstantFromDays(YdbParseUint64(YdbColumnParser(parser, "air_date"), &air_date_exists));
-        printf(", Air date: %s\n", YdbFormatLocalTime(air_date, "%a %b %d, %Y"));
+        YdbInstant air_date = YdbInstantFromDays(YdbParseUint64(
+            YdbColumnParser(parser, "air_date"), &air_date_exists));
+        printf(", Air date: %s\n",
+               YdbFormatLocalTime(air_date, "%a %b %d, %Y"));
     }
-    
-    if (!(UnwrapStatus(YdbRetryQuerySync(client, &DropSeries, NULL))
-            && UnwrapStatus(YdbRetryQuerySync(client, &DropSeasons, NULL))
-            && UnwrapStatus(YdbRetryQuerySync(client, &DropEpisodes, NULL)))) {
+
+    if (!(UnwrapStatus(YdbRetryQuerySync(client, &DropSeries, NULL)) &&
+          UnwrapStatus(YdbRetryQuerySync(client, &DropSeasons, NULL)) &&
+          UnwrapStatus(YdbRetryQuerySync(client, &DropEpisodes, NULL)))) {
         return false;
     }
 

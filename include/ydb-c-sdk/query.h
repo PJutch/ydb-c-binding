@@ -2,8 +2,8 @@
 #define YDB_C_SDK_QUERY_H_
 
 #include "driver.h"
-#include "results.h"
 #include "params.h"
+#include "results.h"
 
 #include <stdbool.h>
 
@@ -38,13 +38,15 @@ typedef struct YdbTx {
     YdbTransaction transaction;
 } YdbTx;
 
-YdbQueryResult YdbExecuteQuerySync(YdbSession session, char* query, YdbTx* tx, YdbParams params);
+YdbQueryResult YdbExecuteQuerySync(YdbSession session, char* query, YdbTx* tx,
+                                   YdbParams params);
 
 YdbTransaction YdbQueryTransaction(YdbQueryResult result);
 
-typedef YdbStatus (*YdbSyncRetryable) (YdbSession session, void* data);
+typedef YdbStatus (*YdbSyncRetryable)(YdbSession session, void* data);
 
-YdbStatus YdbRetryQuerySync(YdbQueryClient client, YdbSyncRetryable query, void* data);
+YdbStatus YdbRetryQuerySync(YdbQueryClient client, YdbSyncRetryable query,
+                            void* data);
 
 #ifdef __cplusplus
 }

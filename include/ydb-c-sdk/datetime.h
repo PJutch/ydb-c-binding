@@ -2,8 +2,8 @@
 #define YDB_C_SDK_DATETIME_H_
 
 #include "helpers.h"
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -27,7 +27,7 @@ uint64_t YdbInstantToHours(YdbInstant instant);
 uint64_t YdbInstantToMicroSeconds(YdbInstant instant);
 uint64_t YdbInstantToMilliSeconds(YdbInstant instant);
 uint64_t YdbInstantToMinutes(YdbInstant instant);
-uint64_t YdbInstantToSeconds(YdbInstant instant);
+uint64_t YdbInstantToSeConds(YdbInstant instant);
 
 // Deallocate using free()
 char* YdbInstantToIso8601(YdbInstant instant);

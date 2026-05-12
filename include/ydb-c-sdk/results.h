@@ -1,8 +1,8 @@
 #ifndef YDB_C_SDK_RESULTS_H_
 #define YDB_C_SDK_RESULTS_H_
 
-#include "helpers.h"
 #include "datetime.h"
+#include "helpers.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -43,7 +43,8 @@ bool YdbNextRow(YdbResultSetParser result_set_parser);
 YDB_C_SDK_OPAQUE_STRUCT(YdbValueParser)
 
 // References result_set_parser
-YdbValueParser YdbColumnParser(YdbResultSetParser result_set_parser, char* column_name);
+YdbValueParser YdbColumnParser(YdbResultSetParser result_set_parser,
+                               char* column_name);
 
 // If exists is NULL treats it as required
 uint64_t YdbParseUint64(YdbValueParser parser, bool* exists);

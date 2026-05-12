@@ -6,9 +6,7 @@
 
 extern "C" {
 
-YdbDriverConfig YdbCreateDriverConfig() {
-    return {new NYdb::TDriverConfig{}};
-}
+YdbDriverConfig YdbCreateDriverConfig() { return {new NYdb::TDriverConfig{}}; }
 
 YdbDriverConfig YdbCreateDriverConfigConnectionString(char* connectionString) {
     return {new NYdb::TDriverConfig{connectionString}};
@@ -38,5 +36,4 @@ void YdbStopDriver(YdbDriver driver, bool wait) {
     FROM_OPAQUE(NYdb::TDriver, driver).Stop(wait);
     delete PTR_FROM_OPAQUE(NYdb::TDriver, driver);
 }
-
 }
