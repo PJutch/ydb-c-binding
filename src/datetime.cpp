@@ -6,6 +6,10 @@
 
 #include <string.h>
 
+YdbInstant YdbInstantNow() {
+    return TInstant::Now().GetValue();
+}
+
 #define YDB_INSTANT_FROM(units)                                                \
     YdbInstant YdbInstantFrom##units(uint64_t value) {                         \
         return TInstant::units(value).GetValue();                              \

@@ -39,9 +39,9 @@ void YdbDestroyResult(YdbQueryResult result) {
 }
 
 YdbStatus YdbAsStatus(YdbQueryResult result) {
-    auto& as_status = static_cast<NYdb::TStatus&>(
-        YdbFromOpaque<NYdb::NQuery::TExecuteQueryResult>(result));
-    return {static_cast<void*>(&as_status)};
+    auto* as_status = static_cast<NYdb::TStatus*>(
+        YdbPtrFromOpaque<NYdb::NQuery::TExecuteQueryResult>(result));
+    return PTR_TO_OPAQUE(as_status);
 }
 
 YdbResultSet YdbGetResultSet(YdbQueryResult result, int result_index) {

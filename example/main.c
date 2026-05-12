@@ -238,8 +238,8 @@ YdbStatus MultiStep(YdbSession session, void* data) {
     YdbParamsBuilder params2_builder = YdbCreateParamsBuilder();
     YdbParamValueBuilder series_id_param2 =
         YdbAddParam(params2_builder, "$seriesId");
-    YdbParamUint64(series_id_param, seriesId);
-    YdbBuildParamValue(series_id_param);
+    YdbParamUint64(series_id_param2, seriesId);
+    YdbBuildParamValue(series_id_param2);
     YdbParamValueBuilder from_date_param =
         YdbAddParam(params2_builder, "$fromDate");
     YdbParamUint64(from_date_param, YdbInstantToDays(from_date));
@@ -263,6 +263,50 @@ YdbStatus MultiStep(YdbSession session, void* data) {
     }
     *result_set = YdbGetResultSet(result2, 0);
     return YdbAsStatus(result2);
+}
+
+YdbStatus ExplicitTcl(YdbQueryClient client, void* data) {
+    YdbInstant air_date = YdbInstantNow();
+
+    YdbCreateSessionResult session_result = YdbCreateSessionSync(client);
+    if (!YdbIsSuccess(YdbCreateSessionResultAsStatus(session_result))) {
+        return YdbCreateSessionResultAsStatus(session_result);
+    }
+    YdbSession session = YdbCreateSessionResultGetSession(session_result);
+    YdbDestroyCreateSessionResult(session_result);
+
+    YdbBeginTransactionResult transaction_result =
+        YdbBeginTransactionSync(session, YDB_TX_SERIALIZABLE_RW, false);
+    if (!YdbIsSuccess(YdbBeginTransactionResultAsStatus(transaction_result))) {
+        return YdbBeginTransactionResultAsStatus(transaction_result);
+    }
+    YdbTransaction transaction =
+        YdbBeginTransactionResultGetTransaction(transaction_result);
+    YdbDestroyBeginTransactionResult(transaction_result);
+
+    char* query = "DECLARE $airDate AS Date;\n"
+                  "UPDATE episodes SET air_date = CAST($airDate AS Uint16)\n"
+                  "WHERE title = \"TBD\";\n";
+
+    YdbParamsBuilder params_builder = YdbCreateParamsBuilder();
+    YdbParamValueBuilder air_date_param =
+        YdbAddParam(params_builder, "$airDate");
+    YdbParamDate(air_date_param, air_date);
+    YdbBuildParamValue(air_date_param);
+    YdbParams params = YdbBuildParams(params_builder);
+
+    YdbTx tx = {.transaction = transaction};
+    YdbQueryResult update_result =
+        YdbExecuteQuerySync(session, query, &tx, params);
+
+    if (!YdbIsSuccess(YdbAsStatus(update_result))) {
+        return YdbAsStatus(update_result);
+    }
+    YdbDestroyResult(update_result);
+
+    YdbDestroyParams(params);
+    
+    return YdbCommitSync(transaction);
 }
 
 bool UnwrapStatus(YdbStatus status) {
@@ -392,6 +436,10 @@ bool Run(YdbQueryClient client) {
             YdbColumnParser(parser, "air_date"), &air_date_exists));
         printf(", Air date: %s\n",
                YdbFormatLocalTime(air_date, "%a %b %d, %Y"));
+    }
+
+    if (!UnwrapStatus(YdbRetryQuerySyncNoSession(client, &ExplicitTcl, NULL))) {
+        return false;
     }
 
     if (!(UnwrapStatus(YdbRetryQuerySync(client, &DropSeries, NULL)) &&

@@ -29,8 +29,9 @@ YDB_C_SDK_PARAM_ACTION(BeginStruct)
 YDB_C_SDK_PARAM_ACTION(EndStruct)
 
 #define YDB_C_SDK_PARAM_ACTION_ARG(name, arg_type)                             \
-    void YdbParam##name(YdbParamValueBuilder builder, arg_type value) {        \
-        YdbFromOpaque<NYdb::TParamValueBuilder>(builder).name(value);          \
+    void YdbParam##name(YdbParamValueBuilder builder_, arg_type value) {       \
+        auto& builder = YdbFromOpaque<NYdb::TParamValueBuilder>(builder_);     \
+        builder.name(value);                                                   \
     }
 
 YDB_C_SDK_PARAM_ACTION_ARG(AddMember, char*)

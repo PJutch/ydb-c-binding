@@ -18,6 +18,14 @@ void YdbDestroyQueryClient(YdbQueryClient client);
 
 YDB_C_SDK_OPAQUE_STRUCT(YdbSession)
 
+YDB_C_SDK_OPAQUE_STRUCT(YdbCreateSessionResult)
+
+void YdbDestroyCreateSessionResult(YdbCreateSessionResult result);
+YdbStatus YdbCreateSessionResultAsStatus(YdbCreateSessionResult result);
+YdbSession YdbCreateSessionResultGetSession(YdbCreateSessionResult result);
+
+YdbCreateSessionResult YdbCreateSessionSync(YdbQueryClient client);
+
 typedef enum YdbTxMode {
     YDB_TX_SERIALIZABLE_RW,
     YDB_TX_ONLINE_RO,
@@ -38,6 +46,16 @@ typedef struct YdbTx {
     YdbTransaction transaction;
 } YdbTx;
 
+YDB_C_SDK_OPAQUE_STRUCT(YdbBeginTransactionResult)
+
+void YdbDestroyBeginTransactionResult(YdbBeginTransactionResult result);
+YdbStatus YdbBeginTransactionResultAsStatus(YdbBeginTransactionResult result);
+YdbTransaction YdbBeginTransactionResultGetTransaction(YdbBeginTransactionResult result);
+
+YdbBeginTransactionResult YdbBeginTransactionSync(YdbSession session, YdbTxMode mode, bool allow_inconsistent_reads);
+
+YdbStatus YdbCommitSync(YdbTransaction transaction);
+
 YdbQueryResult YdbExecuteQuerySync(YdbSession session, char* query, YdbTx* tx,
                                    YdbParams params);
 
@@ -46,6 +64,11 @@ YdbTransaction YdbQueryTransaction(YdbQueryResult result);
 typedef YdbStatus (*YdbSyncRetryable)(YdbSession session, void* data);
 
 YdbStatus YdbRetryQuerySync(YdbQueryClient client, YdbSyncRetryable query,
+                            void* data);
+
+typedef YdbStatus (*YdbSyncRetryableNoSession)(YdbQueryClient client, void* data);
+
+YdbStatus YdbRetryQuerySyncNoSession(YdbQueryClient client, YdbSyncRetryableNoSession query,
                             void* data);
 
 #ifdef __cplusplus
