@@ -167,7 +167,7 @@ YdbStatus SelectWithParams(YdbSession session, void* data) {
     YdbBuildParamValue(series_id_param);
     YdbParamValueBuilder season_id_param =
         YdbAddParam(params_builder, "$seasonId");
-    YdbParamUint64(season_id_param, seriesId);
+    YdbParamUint64(season_id_param, seasonId);
     YdbBuildParamValue(season_id_param);
     YdbParams params = YdbBuildParams(params_builder);
 
@@ -198,7 +198,7 @@ YdbStatus MultiStep(YdbSession session, void* data) {
     YdbBuildParamValue(series_id_param);
     YdbParamValueBuilder season_id_param =
         YdbAddParam(params1_builder, "$seasonId");
-    YdbParamUint64(season_id_param, seriesId);
+    YdbParamUint64(season_id_param, seasonId);
     YdbBuildParamValue(season_id_param);
     YdbParams params1 = YdbBuildParams(params1_builder);
 
