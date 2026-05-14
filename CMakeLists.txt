@@ -5,7 +5,7 @@ project(YDB-C-SDK VERSION 0.01 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED On)
 
-add_library(ydb-c-sdk STATIC)
+add_library(ydb-c-sdk SHARED)
 target_sources(ydb-c-sdk PRIVATE src/driver.cpp src/query.cpp src/params.cpp src/datetime.cpp src/results.cpp src/stream.cpp)
 target_include_directories(ydb-c-sdk 
     PUBLIC 
@@ -19,13 +19,16 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     target_link_libraries(ydb-c-sdk PRIVATE c++)
 endif()
 
-set(YDB_DEPS_PATH "~/ydb_deps" CACHE STRING 
+set(YDB_DEPS_PATH "$ENV{HOME}/ydb_deps" CACHE STRING 
 "Path to where built from source YDB dependencies are installed")
-list(APPEND CMAKE_PREFIX_PATH ${YDB_DEPS_PATH})
+list(APPEND CMAKE_PREFIX_PATH 
+    ${YDB_DEPS_PATH}/protobuf ${YDB_DEPS_PATH}/absl ${YDB_DEPS_PATH}/ydb_cpp_sdk ${YDB_DEPS_PATH}/grpc)
 
+find_package(Protobuf REQUIRED)
+find_package(gRPC REQUIRED)
 find_package(YDB-CPP-SDK REQUIRED)
 
-target_link_libraries(ydb-c-sdk PUBLIC
+target_link_libraries(ydb-c-sdk PRIVATE
   yutil
   YDB-CPP-SDK::Query
   YDB-CPP-SDK::Params
