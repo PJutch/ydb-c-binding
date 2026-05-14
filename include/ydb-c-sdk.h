@@ -6,5 +6,6 @@
 #include "ydb-c-sdk/params.h"
 #include "ydb-c-sdk/query.h"
 #include "ydb-c-sdk/results.h"
+#include "ydb-c-sdk/stream.h"
 
 #endif

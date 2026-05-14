@@ -17,6 +17,8 @@ void YdbDestroyResult(YdbQueryResult result);
 
 YDB_C_SDK_OPAQUE_STRUCT(YdbStatus)
 
+YdbStatus YdbStatusOk();
+
 void YdbDestroyStatus(YdbStatus status);
 
 bool YdbIsSuccess(YdbStatus status);

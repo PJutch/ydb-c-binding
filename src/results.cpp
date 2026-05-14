@@ -11,6 +11,10 @@
 
 extern "C" {
 
+YdbStatus YdbStatusOk() {
+    return TO_NEW_OPAQUE(NYdb::TStatus, NYdb::TStatus(NYdb::EStatus::SUCCESS, NYdb::NIssue::TIssues()));
+}
+
 void YdbDestroyStatus(YdbStatus status) {
     delete YdbPtrFromOpaque<NYdb::TStatus>(status);
 }

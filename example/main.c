@@ -305,8 +305,105 @@ YdbStatus ExplicitTcl(YdbQueryClient client, void* data) {
     YdbDestroyResult(update_result);
 
     YdbDestroyParams(params);
-    
+
     return YdbCommitSync(transaction);
+}
+
+YdbStatus StreamQuerySelect(YdbQueryClient client, void* data) {
+    char* query = "DECLARE $series AS List<UInt64>;\n"
+                  "SELECT series_id, season_id, title, CAST(first_aired AS "
+                  "Date) AS first_aired\n"
+                  "FROM seasons\n"
+                  "WHERE series_id IN $series\n"
+                  "ORDER BY season_id;\n";
+
+    YdbParamsBuilder params_builder = YdbCreateParamsBuilder();
+    YdbParamValueBuilder list_param = YdbAddParam(params_builder, "$series");
+    YdbParamBeginList(list_param);
+
+    YdbParamAddListItem(list_param);
+    YdbParamUint64(list_param, 1);
+
+    YdbParamAddListItem(list_param);
+    YdbParamUint64(list_param, 10);
+
+    YdbParamEndList(list_param);
+    YdbBuildParamValue(list_param);
+    YdbParams params = YdbBuildParams(params_builder);
+
+    YdbExecuteQueryIterator resultStreamQuery =
+        YdbStreamExecuteQuerySync(client, query, NULL, params);
+
+    if (!YdbIsSuccess(YdbExecuteQueryIteratorAsStatus(resultStreamQuery))) {
+        return YdbExecuteQueryIteratorAsStatus(resultStreamQuery);
+    }
+
+    // Iterates over results
+    bool eos = false;
+
+    while (!eos) {
+        YdbExecuteQueryPart streamPart = YdbReadNextSync(resultStreamQuery);
+
+        if (!YdbIsSuccess(YdbExecuteQueryPartAsStatus(streamPart))) {
+            eos = true;
+            if (!YdbIsEos(streamPart)) {
+                return YdbExecuteQueryPartAsStatus(streamPart);
+            }
+            continue;
+        }
+
+        // It is possible to duplicate lines in the output stream due to an
+        // external retryer.
+        if (YdbExecuteQueryPartHasResultSet(streamPart)) {
+            YdbResultSet rs = YdbExecuteQueryPartGetResultSet(streamPart);
+            YdbResultSetParser parser = YdbCreateResultSetParser(rs);
+            while (YdbNextRow(parser)) {
+                printf("Season");
+
+                printf(", SeriesId: ");
+                bool has_series_id;
+                uint64_t series_id = YdbParseUint64(
+                    YdbColumnParser(parser, "series_id"), &has_series_id);
+                if (has_series_id) {
+                    printf("%lu", series_id);
+                } else {
+                    printf("(NULL)");
+                }
+
+                printf(", SeasonId: ");
+                bool has_season_id;
+                uint64_t season_id = YdbParseUint64(
+                    YdbColumnParser(parser, "season_id"), &has_season_id);
+                if (has_season_id) {
+                    printf("%lu", season_id);
+                } else {
+                    printf("(NULL)");
+                }
+
+                printf(", Title: ");
+                char* title =
+                    YdbParseUtf8(YdbColumnParser(parser, "title"));
+                if (title != NULL) {
+                    printf("%s", title);
+                } else {
+                    printf("(NULL)");
+                }
+
+                printf(", Air date: ");
+                bool has_air_date;
+                uint64_t air_date = YdbParseDate(
+                    YdbColumnParser(parser, "first_aired"), &has_air_date);
+                if (has_air_date) {
+                    printf("%s", YdbFormatLocalTime(air_date, "%Y-%m-%d"));
+                } else {
+                    printf("(NULL)");
+                }
+
+                printf("\n");
+            }
+        }
+    }
+    return YdbStatusOk();
 }
 
 bool UnwrapStatus(YdbStatus status) {
@@ -441,6 +538,12 @@ bool Run(YdbQueryClient client) {
     if (!UnwrapStatus(YdbRetryQuerySyncNoSession(client, &ExplicitTcl, NULL))) {
         return false;
     }
+
+    printf("> StreamQuery:\n");
+    if (!UnwrapStatus(YdbRetryQuerySyncNoSession(client, &StreamQuerySelect, NULL))) {
+        return false;
+    }
+
 
     if (!(UnwrapStatus(YdbRetryQuerySync(client, &DropSeries, NULL)) &&
           UnwrapStatus(YdbRetryQuerySync(client, &DropSeasons, NULL)) &&

@@ -41,7 +41,7 @@ YdbCreateSessionResult YdbCreateSessionSync(YdbQueryClient client) {
 }
 
 // expects mode != YdbX_TRANSACTION
-static NYdb::NQuery::TTxSettings
+NYdb::NQuery::TTxSettings
 YdbCreateTxSettings(YdbTxMode mode, bool allow_inconsistent_reads) {
     switch (mode) {
     case YDB_TX_SERIALIZABLE_RW:
@@ -61,7 +61,7 @@ YdbCreateTxSettings(YdbTxMode mode, bool allow_inconsistent_reads) {
     }
 }
 
-static NYdb::NQuery::TTxControl YdbCreateTx(YdbTx* tx_) {
+NYdb::NQuery::TTxControl YdbCreateTx(YdbTx* tx_) {
     if (!tx_) {
         return NYdb::NQuery::TTxControl::NoTx();
     } else if (tx_->mode == YDB_TX_TRANSACTION) {
