@@ -167,6 +167,61 @@ function SelectSimple($session, $data) {
     return $ydb->YdbQueryResultAsStatus($result);
 }
 
+function UpsertSimple($session, $data) {
+    global $ydb;
+
+    $query = <<<END
+        UPSERT INTO episodes (series_id, season_id, episode_id, title) VALUES (2, 6, 1, "TBD");
+    END;
+
+    $tx = $ydb->new("YdbTx");
+    $tx->mode = $ydb->YDB_TX_SERIALIZABLE_RW;
+    $tx->commit = true;
+    return $ydb->YdbQueryResultAsStatus($ydb->YdbGetSyncQueryResult(
+        $ydb->YdbExecuteQuery($session, $query, NULL, $ydb->new('YdbParams'))));
+}
+
+function SelectWithParams($session, $data) {
+    global $ydb;
+
+    $result_set = $ydb->cast("YdbResultSet*", $data);
+
+    $seriesId = 2;
+    $seasonId = 3;
+    $query = <<<END
+        DECLARE \$seriesId AS Uint64;
+        DECLARE \$seasonId AS Uint64;
+        SELECT sa.title AS season_title, sr.title AS series_title
+        FROM seasons AS sa
+        INNER JOIN series AS sr
+        ON sa.series_id = sr.series_id
+        WHERE sa.series_id = \$seriesId AND sa.season_id = \$seasonId;
+    END;
+
+    $params_builder = $ydb->YdbCreateParamsBuilder();
+    $series_id_param =
+        $ydb->YdbAddParam($params_builder, "\$seriesId");
+    $ydb->YdbParamUint64($series_id_param, $seriesId);
+    $ydb->YdbBuildParamValue($series_id_param);
+    $season_id_param =
+        $ydb->YdbAddParam($params_builder, "\$seasonId");
+    $ydb->YdbParamUint64($season_id_param, $seasonId);
+    $ydb->YdbBuildParamValue($season_id_param);
+    $params = $ydb->YdbBuildParams($params_builder);
+
+    $tx = $ydb->new("YdbTx");
+    $tx->mode = $ydb->YDB_TX_SERIALIZABLE_RW;
+    $tx->commit = true;
+    $result = $ydb->YdbGetSyncQueryResult(
+        $ydb->YdbExecuteQuery($session, $query, FFI::addr($tx), $params));
+
+    if ($ydb->YdbIsSuccess($ydb->YdbQueryResultAsStatus($result))) {
+        $result_set[0] = $ydb->YdbGetResultSet($result, 0);
+    }
+
+    return $ydb->YdbQueryResultAsStatus($result);
+}
+
 function UnwrapStatus($status) {
     global $ydb;
 
@@ -225,6 +280,37 @@ function Run($client) {
         $release_date = $ydb->YdbParseDate($ydb->YdbColumnParser($parser, "release_date"), FFI::addr($parsed_date));
         if ($parsed_date->cdata) {
             echo FFI::string($ydb->YdbFormatLocalTime($release_date, "%Y-%m-%d"));
+        } else {
+            echo "(NULL)";
+        }
+
+        echo "\n";
+    }
+
+    if (!UnwrapStatus($ydb->YdbRetryQuerySync($client, Closure::fromCallable('UpsertSimple'), NULL))) {
+        return false;
+    }
+
+    if (!UnwrapStatus($ydb->YdbRetryQuerySync($client, Closure::fromCallable('SelectWithParams'), FFI::addr($result_set)))) {
+        return false;
+    }
+
+    $parser = $ydb->YdbCreateResultSetParser($result_set);
+    while ($ydb->YdbNextRow($parser)) {
+        echo "> SelectWithParams:\nSeason";
+
+        echo ", Title: ";
+        $title = $ydb->YdbParseUtf8($ydb->YdbColumnParser($parser, "season_title"));
+        if ($title) {
+            echo FFI::string($title);
+        } else {
+            echo "(NULL)";
+        }
+
+        echo ", Series title: ";
+        $title = $ydb->YdbParseUtf8($ydb->YdbColumnParser($parser, "series_title"));
+        if ($title) {
+            echo FFI::string($title);
         } else {
             echo "(NULL)";
         }
