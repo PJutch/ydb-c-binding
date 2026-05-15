@@ -31,12 +31,11 @@ char* YdbGetErrorMessage(YdbStatus status) {
     TString string;
     TStringOutput stream{string};
 
-    YdbFromOpaque<NYdb::TStatus>(status).Out(stream);
+    stream << "status: " << YdbFromOpaque<NYdb::TStatus>(status).GetStatus()
+        << '\n' << YdbFromOpaque<NYdb::TStatus>(status).GetIssues().ToString();
 
     return strdup(string.data());
 }
-
-void YdbDestroyErrorMessage(char* message) { free(message); }
 
 void YdbDestroyResult(YdbQueryResult result) {
     delete YdbPtrFromOpaque<NYdb::NQuery::TExecuteQueryResult>(result);

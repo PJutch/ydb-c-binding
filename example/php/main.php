@@ -173,7 +173,7 @@ function UnwrapStatus($status) {
     if (!$ydb->YdbIsSuccess($status)) {
         $error = $ydb->YdbGetErrorMessage($status);
         $error_string = FFI::string($error);
-        echo "fatal error: $error_string\n";
+        echo "fatal error:\n$error_string\n";
         $ydb->free($error);
         return false;
     }

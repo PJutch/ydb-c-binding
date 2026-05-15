@@ -409,7 +409,7 @@ YdbStatus StreamQuerySelect(YdbQueryClient client, void* data) {
 bool UnwrapStatus(YdbStatus status) {
     if (!YdbIsSuccess(status)) {
         char* error = YdbGetErrorMessage(status);
-        fprintf(stderr, "fatal error: %s\n", error);
+        fprintf(stderr, "fatal error:\n%s\n", error);
         free(error);
         return false;
     }
