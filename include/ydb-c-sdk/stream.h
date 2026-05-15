@@ -10,20 +10,14 @@
 extern "C" {
 #endif
 
-YDB_C_SDK_OPAQUE_STRUCT(YdbExecuteQueryIterator)
-
-void YdbDestroyExecuteQueryIterator(YdbExecuteQueryIterator result);
-YdbStatus YdbExecuteQueryIteratorAsStatus(YdbExecuteQueryIterator result);
+YDB_C_SDK_RESULT(ExecuteQueryIterator)
 
 YdbExecuteQueryIterator YdbStreamExecuteQuerySync(YdbQueryClient client,
                                                   char* query, YdbTx* tx,
                                                   YdbParams params);
 
 
-YDB_C_SDK_OPAQUE_STRUCT(YdbExecuteQueryPart)
-
-void YdbDestroyExecuteQueryPart(YdbExecuteQueryPart result);
-YdbStatus YdbExecuteQueryPartAsStatus(YdbExecuteQueryPart result);
+YDB_C_SDK_RESULT(ExecuteQueryPart)
 
 YdbExecuteQueryPart YdbReadNextSync(YdbExecuteQueryIterator iterator);
 

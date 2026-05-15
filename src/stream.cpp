@@ -1,6 +1,7 @@
 #include "ydb-c-sdk/stream.h"
 
 #include "helpers.hpp"
+#include "result_helpers.hpp"
 #include "tx_helprers.hpp"
 
 #include <ydb-cpp-sdk/client/params/params.h>
@@ -8,15 +9,7 @@
 #include <ydb-cpp-sdk/client/query/query.h>
 
 extern "C" {
-void YdbDestroyExecuteQueryIterator(YdbExecuteQueryIterator result) {
-    delete YdbPtrFromOpaque<NYdb::NQuery::TExecuteQueryIterator>(result);
-}
-
-YdbStatus YdbExecuteQueryIteratorAsStatus(YdbExecuteQueryIterator result) {
-    auto* as_status = static_cast<NYdb::TStatus*>(
-        YdbPtrFromOpaque<NYdb::NQuery::TExecuteQueryIterator>(result));
-    return PTR_TO_OPAQUE(as_status);
-}
+YDB_C_SDK_RESULT_IMPL(ExecuteQueryIterator, NYdb::NQuery::TExecuteQueryIterator)
 
 YdbExecuteQueryIterator YdbStreamExecuteQuerySync(YdbQueryClient client_,
                                                   char* query, YdbTx* tx,
@@ -30,21 +23,14 @@ YdbExecuteQueryIterator YdbStreamExecuteQuerySync(YdbQueryClient client_,
         new NYdb::NQuery::TExecuteQueryIterator{future.GetValueSync()})};
 }
 
-void YdbDestroyExecuteQueryPart(YdbExecuteQueryPart result) {
-    delete YdbPtrFromOpaque<NYdb::NQuery::TExecuteQueryPart>(result);
-}
-
-YdbStatus YdbExecuteQueryPartAsStatus(YdbExecuteQueryPart result) {
-    auto* as_status = static_cast<NYdb::TStatus*>(
-        YdbPtrFromOpaque<NYdb::NQuery::TExecuteQueryPart>(result));
-    return PTR_TO_OPAQUE(as_status);
-}
+YDB_C_SDK_RESULT_IMPL(ExecuteQueryPart, NYdb::NQuery::TExecuteQueryPart)
 
 YdbExecuteQueryPart YdbReadNextSync(YdbExecuteQueryIterator iterator) {
     return TO_NEW_OPAQUE(
         NYdb::NQuery::TExecuteQueryPart,
         YdbFromOpaque<NYdb::NQuery::TExecuteQueryIterator>(iterator)
-            .ReadNext().GetValueSync());
+            .ReadNext()
+            .GetValueSync());
 }
 
 bool YdbIsEos(YdbExecuteQueryPart part) {

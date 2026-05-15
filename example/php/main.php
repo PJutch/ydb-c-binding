@@ -22,7 +22,7 @@ function CreateSeries($session, $data) {
         );
     END;
 
-    return $ydb->YdbAsStatus(
+    return $ydb->YdbQueryResultAsStatus(
         $ydb->YdbExecuteQuerySync($session, $query, NULL, $ydb->new('YdbParams')));
 }
 
@@ -40,7 +40,7 @@ function CreateSeasons($session, $data) {
         );
     END;
 
-    return $ydb->YdbAsStatus(
+    return $ydb->YdbQueryResultAsStatus(
         $ydb->YdbExecuteQuerySync($session, $query, NULL, $ydb->new('YdbParams')));
 }
 
@@ -58,7 +58,7 @@ function CreateEpisodes($session, $data) {
         );
     END;
 
-    return $ydb->YdbAsStatus(
+    return $ydb->YdbQueryResultAsStatus(
         $ydb->YdbExecuteQuerySync($session, $query, NULL, $ydb->new('YdbParams')));
 }
 
@@ -66,7 +66,7 @@ function DropSeries($session, $data) {
     global $ydb;
 
     $query = "DROP TABLE series";
-    return $ydb->YdbAsStatus(
+    return $ydb->YdbQueryResultAsStatus(
         $ydb->YdbExecuteQuerySync($session, $query, NULL, $ydb->new('YdbParams')));
 }
 
@@ -74,7 +74,7 @@ function DropSeasons($session, $data) {
     global $ydb;
 
     $query = "DROP TABLE seasons";
-    return $ydb->YdbAsStatus(
+    return $ydb->YdbQueryResultAsStatus(
         $ydb->YdbExecuteQuerySync($session, $query, NULL, $ydb->new('YdbParams')));
 }
 
@@ -82,7 +82,7 @@ function DropEpisodes($session, $data) {
     global $ydb;
 
     $query = "DROP TABLE episodes";
-    return $ydb->YdbAsStatus(
+    return $ydb->YdbQueryResultAsStatus(
         $ydb->YdbExecuteQuerySync($session, $query, NULL, $ydb->new('YdbParams')));
 }
 
@@ -142,7 +142,7 @@ function FillData($session, $data) {
     $tx = $ydb->new("YdbTx");
     $tx->mode = $ydb->YDB_TX_SERIALIZABLE_RW;
     $tx->commit = true;
-    return $ydb->YdbAsStatus($ydb->YdbExecuteQuerySync($session, $query, FFI::addr($tx), $params));
+    return $ydb->YdbQueryResultAsStatus($ydb->YdbExecuteQuerySync($session, $query, FFI::addr($tx), $params));
 }
 
 function SelectSimple($session, $data) {
@@ -160,11 +160,11 @@ function SelectSimple($session, $data) {
     $tx->mode = $ydb->YDB_TX_SERIALIZABLE_RW;
     $tx->commit = true;
     $result = $ydb->YdbExecuteQuerySync($session, $query, FFI::addr($tx), $ydb->new("YdbParams"));
-    if ($ydb->YdbIsSuccess($ydb->YdbAsStatus($result))) {
+    if ($ydb->YdbIsSuccess($ydb->YdbQueryResultAsStatus($result))) {
         $result_set[0] = $ydb->YdbGetResultSet($result, 0);
-        return $ydb->YdbAsStatus($result);
+        return $ydb->YdbQueryResultAsStatus($result);
     }
-    return $ydb->YdbAsStatus($result);
+    return $ydb->YdbQueryResultAsStatus($result);
 }
 
 function UnwrapStatus($status) {

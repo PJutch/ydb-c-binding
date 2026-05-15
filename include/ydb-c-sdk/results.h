@@ -11,10 +11,6 @@
 extern "C" {
 #endif
 
-YDB_C_SDK_OPAQUE_STRUCT(YdbQueryResult)
-
-void YdbDestroyResult(YdbQueryResult result);
-
 YDB_C_SDK_OPAQUE_STRUCT(YdbStatus)
 
 YdbStatus YdbStatusOk();
@@ -27,8 +23,13 @@ bool YdbIsTransportError(YdbStatus status);
 // Deallocate using free()
 char* YdbGetErrorMessage(YdbStatus status);
 
-// Doesn't copy, don't destroy both
-YdbStatus YdbAsStatus(YdbQueryResult result);
+#define YDB_C_SDK_RESULT(name_no_ydb)                                          \
+    YDB_C_SDK_OPAQUE_STRUCT(Ydb##name_no_ydb)                                  \
+    void YdbDestroy##name_no_ydb(Ydb##name_no_ydb result);                     \
+    /* Doesn't copy, don't destroy both */                                     \
+    YdbStatus Ydb##name_no_ydb##AsStatus(Ydb##name_no_ydb result);
+
+YDB_C_SDK_RESULT(QueryResult)
 
 YDB_C_SDK_OPAQUE_STRUCT(YdbResultSet)
 

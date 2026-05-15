@@ -18,10 +18,8 @@ void YdbDestroyQueryClient(YdbQueryClient client);
 
 YDB_C_SDK_OPAQUE_STRUCT(YdbSession)
 
-YDB_C_SDK_OPAQUE_STRUCT(YdbCreateSessionResult)
+YDB_C_SDK_RESULT(CreateSessionResult)
 
-void YdbDestroyCreateSessionResult(YdbCreateSessionResult result);
-YdbStatus YdbCreateSessionResultAsStatus(YdbCreateSessionResult result);
 YdbSession YdbCreateSessionResultGetSession(YdbCreateSessionResult result);
 
 YdbCreateSessionResult YdbCreateSessionSync(YdbQueryClient client);
@@ -46,10 +44,8 @@ typedef struct YdbTx {
     YdbTransaction transaction;
 } YdbTx;
 
-YDB_C_SDK_OPAQUE_STRUCT(YdbBeginTransactionResult)
+YDB_C_SDK_RESULT(BeginTransactionResult)
 
-void YdbDestroyBeginTransactionResult(YdbBeginTransactionResult result);
-YdbStatus YdbBeginTransactionResultAsStatus(YdbBeginTransactionResult result);
 YdbTransaction YdbBeginTransactionResultGetTransaction(YdbBeginTransactionResult result);
 
 YdbBeginTransactionResult YdbBeginTransactionSync(YdbSession session, YdbTxMode mode, bool allow_inconsistent_reads);

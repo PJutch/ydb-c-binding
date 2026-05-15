@@ -1,6 +1,7 @@
 #include "ydb-c-sdk/results.h"
 
 #include "helpers.hpp"
+#include "result_helpers.hpp"
 
 #include <__ydb_sdk_special_headers/util/datetime/base.h>
 #include <__ydb_sdk_special_headers/util/generic/string.h>
@@ -12,7 +13,8 @@
 extern "C" {
 
 YdbStatus YdbStatusOk() {
-    return TO_NEW_OPAQUE(NYdb::TStatus, NYdb::TStatus(NYdb::EStatus::SUCCESS, NYdb::NIssue::TIssues()));
+    return TO_NEW_OPAQUE(NYdb::TStatus, NYdb::TStatus(NYdb::EStatus::SUCCESS,
+                                                      NYdb::NIssue::TIssues()));
 }
 
 void YdbDestroyStatus(YdbStatus status) {
@@ -32,20 +34,13 @@ char* YdbGetErrorMessage(YdbStatus status) {
     TStringOutput stream{string};
 
     stream << "status: " << YdbFromOpaque<NYdb::TStatus>(status).GetStatus()
-        << '\n' << YdbFromOpaque<NYdb::TStatus>(status).GetIssues().ToString();
+           << '\n'
+           << YdbFromOpaque<NYdb::TStatus>(status).GetIssues().ToString();
 
     return strdup(string.data());
 }
 
-void YdbDestroyResult(YdbQueryResult result) {
-    delete YdbPtrFromOpaque<NYdb::NQuery::TExecuteQueryResult>(result);
-}
-
-YdbStatus YdbAsStatus(YdbQueryResult result) {
-    auto* as_status = static_cast<NYdb::TStatus*>(
-        YdbPtrFromOpaque<NYdb::NQuery::TExecuteQueryResult>(result));
-    return PTR_TO_OPAQUE(as_status);
-}
+YDB_C_SDK_RESULT_IMPL(QueryResult, NYdb::NQuery::TExecuteQueryResult)
 
 YdbResultSet YdbGetResultSet(YdbQueryResult result, int result_index) {
     return {new NYdb::TResultSet{

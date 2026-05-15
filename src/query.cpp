@@ -1,6 +1,7 @@
 #include "ydb-c-sdk/query.h"
 
 #include "helpers.hpp"
+#include "result_helpers.hpp"
 
 #include <ydb-cpp-sdk/client/query/client.h>
 #include <ydb-cpp-sdk/client/query/query.h>
@@ -16,15 +17,7 @@ void YdbDestroyQueryClient(YdbQueryClient client) {
     delete YdbPtrFromOpaque<NYdb::NQuery::TQueryClient>(client);
 }
 
-void YdbDestroyCreateSessionResult(YdbCreateSessionResult result) {
-    delete YdbPtrFromOpaque<NYdb::NQuery::TQueryClient>(result);
-}
-
-YdbStatus YdbCreateSessionResultAsStatus(YdbCreateSessionResult result) {
-    auto* as_status = static_cast<NYdb::TStatus*>(
-        YdbPtrFromOpaque<NYdb::NQuery::TExecuteQueryResult>(result));
-    return PTR_TO_OPAQUE(as_status);
-}
+YDB_C_SDK_RESULT_IMPL(CreateSessionResult, NYdb::NQuery::TCreateSessionResult)
 
 YdbSession YdbCreateSessionResultGetSession(YdbCreateSessionResult result) {
     return TO_NEW_OPAQUE(
@@ -41,8 +34,8 @@ YdbCreateSessionResult YdbCreateSessionSync(YdbQueryClient client) {
 }
 
 // expects mode != YdbX_TRANSACTION
-NYdb::NQuery::TTxSettings
-YdbCreateTxSettings(YdbTxMode mode, bool allow_inconsistent_reads) {
+NYdb::NQuery::TTxSettings YdbCreateTxSettings(YdbTxMode mode,
+                                              bool allow_inconsistent_reads) {
     switch (mode) {
     case YDB_TX_SERIALIZABLE_RW:
         return NYdb::NQuery::TTxSettings::SerializableRW();
@@ -77,28 +70,20 @@ NYdb::NQuery::TTxControl YdbCreateTx(YdbTx* tx_) {
 
 extern "C" {
 
-void YdbDestroyBeginTransactionResult(YdbBeginTransactionResult result) {
-    delete YdbPtrFromOpaque<NYdb::NQuery::TBeginTransactionResult>(result);
-}
+YDB_C_SDK_RESULT_IMPL(BeginTransactionResult,
+                      NYdb::NQuery::TBeginTransactionResult)
 
-YdbStatus
-YdbBeginTransactionResultAsStatus(YdbBeginTransactionResult result) {
-    auto* as_status = static_cast<NYdb::TStatus*>(
-        YdbPtrFromOpaque<NYdb::NQuery::TExecuteQueryResult>(result));
-    return PTR_TO_OPAQUE(as_status);
-}
-
-YdbTransaction YdbBeginTransactionResultGetTransaction(
-    YdbBeginTransactionResult result) {
+YdbTransaction
+YdbBeginTransactionResultGetTransaction(YdbBeginTransactionResult result) {
     return TO_NEW_OPAQUE(
         NYdb::NQuery::TTransaction,
         YdbFromOpaque<NYdb::NQuery::TBeginTransactionResult>(result)
             .GetTransaction());
 }
 
-YdbBeginTransactionResult YdbBeginTransactionSync(YdbSession session,
-                                               YdbTxMode mode,
-                                               bool allow_inconsistent_reads) {
+YdbBeginTransactionResult
+YdbBeginTransactionSync(YdbSession session, YdbTxMode mode,
+                        bool allow_inconsistent_reads) {
     return TO_NEW_OPAQUE(NYdb::NQuery::TBeginTransactionResult,
                          YdbFromOpaque<NYdb::NQuery::TSession>(session)
                              .BeginTransaction(YdbCreateTxSettings(
