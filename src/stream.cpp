@@ -9,28 +9,28 @@
 #include <ydb-cpp-sdk/client/query/query.h>
 
 extern "C" {
-YDB_C_SDK_RESULT_IMPL(ExecuteQueryIterator, NYdb::NQuery::TExecuteQueryIterator)
+YDB_C_SDK_RESULT_IMPL(ExecuteQueryIterator, NYdb::NQuery::TExecuteQueryIterator,
+                      NYdb::NQuery::TAsyncExecuteQueryIterator)
 
-YdbExecuteQueryIterator YdbStreamExecuteQuerySync(YdbQueryClient client_,
-                                                  char* query, YdbTx* tx,
-                                                  YdbParams params_) {
+YdbAsyncExecuteQueryIterator YdbStreamExecuteQuery(YdbQueryClient client_,
+                                                       char* query, YdbTx* tx,
+                                                       YdbParams params_) {
     auto& client = YdbFromOpaque<NYdb::NQuery::TQueryClient>(client_);
     auto* params = YdbPtrFromOpaque<NYdb::TParams>(params_);
     auto future =
         params ? client.StreamExecuteQuery(query, YdbCreateTx(tx), *params)
                : client.StreamExecuteQuery(query, YdbCreateTx(tx));
-    return {static_cast<void*>(
-        new NYdb::NQuery::TExecuteQueryIterator{future.GetValueSync()})};
+    return TO_NEW_OPAQUE(NYdb::NQuery::TAsyncExecuteQueryIterator, future);
 }
 
-YDB_C_SDK_RESULT_IMPL(ExecuteQueryPart, NYdb::NQuery::TExecuteQueryPart)
+YDB_C_SDK_RESULT_IMPL(ExecuteQueryPart, NYdb::NQuery::TExecuteQueryPart,
+                      NYdb::NQuery::TAsyncExecuteQueryPart)
 
-YdbExecuteQueryPart YdbReadNextSync(YdbExecuteQueryIterator iterator) {
+YdbAsyncExecuteQueryPart YdbReadNext(YdbExecuteQueryIterator iterator) {
     return TO_NEW_OPAQUE(
-        NYdb::NQuery::TExecuteQueryPart,
+        NYdb::NQuery::TAsyncExecuteQueryPart,
         YdbFromOpaque<NYdb::NQuery::TExecuteQueryIterator>(iterator)
-            .ReadNext()
-            .GetValueSync());
+            .ReadNext());
 }
 
 bool YdbIsEos(YdbExecuteQueryPart part) {

@@ -22,7 +22,7 @@ YDB_C_SDK_RESULT(CreateSessionResult)
 
 YdbSession YdbCreateSessionResultGetSession(YdbCreateSessionResult result);
 
-YdbCreateSessionResult YdbCreateSessionSync(YdbQueryClient client);
+YdbAsyncCreateSessionResult YdbCreateSession(YdbQueryClient client);
 
 typedef enum YdbTxMode {
     YDB_TX_SERIALIZABLE_RW,
@@ -46,14 +46,19 @@ typedef struct YdbTx {
 
 YDB_C_SDK_RESULT(BeginTransactionResult)
 
-YdbTransaction YdbBeginTransactionResultGetTransaction(YdbBeginTransactionResult result);
+YdbTransaction
+YdbBeginTransactionResultGetTransaction(YdbBeginTransactionResult result);
 
-YdbBeginTransactionResult YdbBeginTransactionSync(YdbSession session, YdbTxMode mode, bool allow_inconsistent_reads);
+YdbAsyncBeginTransactionResult
+YdbBeginTransaction(YdbSession session, YdbTxMode mode,
+                    bool allow_inconsistent_reads);
+                
+YDB_C_SDK_RESULT(CommitResult)
 
-YdbStatus YdbCommitSync(YdbTransaction transaction);
+YdbAsyncCommitResult YdbCommit(YdbTransaction transaction);
 
-YdbQueryResult YdbExecuteQuerySync(YdbSession session, char* query, YdbTx* tx,
-                                   YdbParams params);
+YdbAsyncQueryResult YdbExecuteQuery(YdbSession session, char* query, YdbTx* tx,
+                                    YdbParams params);
 
 YdbTransaction YdbQueryTransaction(YdbQueryResult result);
 
@@ -62,10 +67,22 @@ typedef YdbStatus (*YdbSyncRetryable)(YdbSession session, void* data);
 YdbStatus YdbRetryQuerySync(YdbQueryClient client, YdbSyncRetryable query,
                             void* data);
 
-typedef YdbStatus (*YdbSyncRetryableNoSession)(YdbQueryClient client, void* data);
+typedef YdbStatus (*YdbSyncRetryableNoSession)(YdbQueryClient client,
+                                               void* data);
 
-YdbStatus YdbRetryQuerySyncNoSession(YdbQueryClient client, YdbSyncRetryableNoSession query,
-                            void* data);
+YdbStatus YdbRetryQuerySyncNoSession(YdbQueryClient client,
+                                     YdbSyncRetryableNoSession query,
+                                     void* data);
+
+typedef YdbAsyncStatus (*YdbRetryable)(YdbSession session, void* data);
+
+YdbAsyncStatus YdbRetryQuery(YdbQueryClient client, YdbRetryable query,
+                             void* data);
+
+typedef YdbStatus (*YdbRetryableNoSession)(YdbQueryClient client, void* data);
+
+YdbAsyncStatus YdbRetryQueryNoSession(YdbQueryClient client,
+                                      YdbRetryableNoSession query, void* data);
 
 #ifdef __cplusplus
 }

@@ -40,7 +40,18 @@ char* YdbGetErrorMessage(YdbStatus status) {
     return strdup(string.data());
 }
 
-YDB_C_SDK_RESULT_IMPL(QueryResult, NYdb::NQuery::TExecuteQueryResult)
+void YdbDestroyAsyncStatus(YdbAsyncStatus status) {
+    delete YdbPtrFromOpaque<NYdb::TAsyncStatus>(status);
+}
+
+YdbStatus YdbGetSyncStatus(YdbAsyncStatus status) {
+    return TO_NEW_OPAQUE(
+        NYdb::TStatus,
+        YdbFromOpaque<NYdb::TAsyncStatus>(status).ExtractValueSync());
+}
+
+YDB_C_SDK_RESULT_IMPL(QueryResult, NYdb::NQuery::TExecuteQueryResult,
+                      NYdb::NQuery::TAsyncExecuteQueryResult)
 
 YdbResultSet YdbGetResultSet(YdbQueryResult result, int result_index) {
     return {new NYdb::TResultSet{

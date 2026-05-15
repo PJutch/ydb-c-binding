@@ -16,8 +16,8 @@ YdbStatus CreateSeries(YdbSession session, void*) {
                   "    PRIMARY KEY (series_id)"
                   ");";
 
-    return YdbQueryResultAsStatus(
-        YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
+    return YdbQueryResultAsStatus(YdbGetSyncQueryResult(
+        YdbExecuteQuery(session, query, NULL, YDB_NULL_PARAMS)));
 }
 
 YdbStatus CreateSeasons(YdbSession session, void*) {
@@ -30,8 +30,8 @@ YdbStatus CreateSeasons(YdbSession session, void*) {
                   "    PRIMARY KEY (series_id, season_id)"
                   ");";
 
-    return YdbQueryResultAsStatus(
-        YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
+    return YdbQueryResultAsStatus(YdbGetSyncQueryResult(
+        YdbExecuteQuery(session, query, NULL, YDB_NULL_PARAMS)));
 }
 
 YdbStatus CreateEpisodes(YdbSession session, void*) {
@@ -43,26 +43,26 @@ YdbStatus CreateEpisodes(YdbSession session, void*) {
                   "    air_date Uint64,"
                   "    PRIMARY KEY (series_id, season_id, episode_id)"
                   ");";
-    return YdbQueryResultAsStatus(
-        YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
+    return YdbQueryResultAsStatus(YdbGetSyncQueryResult(
+        YdbExecuteQuery(session, query, NULL, YDB_NULL_PARAMS)));
 }
 
 YdbStatus DropSeries(YdbSession session, void*) {
     char* query = "DROP TABLE series";
-    return YdbQueryResultAsStatus(
-        YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
+    return YdbQueryResultAsStatus(YdbGetSyncQueryResult(
+        YdbExecuteQuery(session, query, NULL, YDB_NULL_PARAMS)));
 }
 
 YdbStatus DropSeasons(YdbSession session, void*) {
     char* query = "DROP TABLE seasons";
-    return YdbQueryResultAsStatus(
-        YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
+    return YdbQueryResultAsStatus(YdbGetSyncQueryResult(
+        YdbExecuteQuery(session, query, NULL, YDB_NULL_PARAMS)));
 }
 
 YdbStatus DropEpisodes(YdbSession session, void*) {
     char* query = "DROP TABLE episodes";
-    return YdbQueryResultAsStatus(
-        YdbExecuteQuerySync(session, query, NULL, YDB_NULL_PARAMS));
+    return YdbQueryResultAsStatus(YdbGetSyncQueryResult(
+        YdbExecuteQuery(session, query, NULL, YDB_NULL_PARAMS)));
 }
 
 YdbStatus FillData(YdbSession session, void*) {
@@ -115,7 +115,8 @@ YdbStatus FillData(YdbSession session, void*) {
     YdbParams params = CreateParams();
 
     YdbTx tx = {.mode = YDB_TX_SERIALIZABLE_RW, .commit = true};
-    return YdbQueryResultAsStatus(YdbExecuteQuerySync(session, query, &tx, params));
+    return YdbQueryResultAsStatus(
+        YdbGetSyncQueryResult(YdbExecuteQuery(session, query, &tx, params)));
 }
 
 YdbStatus SelectSimple(YdbSession session, void* data) {
@@ -127,8 +128,8 @@ YdbStatus SelectSimple(YdbSession session, void* data) {
         "WHERE series_id = 1;";
 
     YdbTx tx = {.mode = YDB_TX_SERIALIZABLE_RW, .commit = true};
-    YdbQueryResult result =
-        YdbExecuteQuerySync(session, query, &tx, YDB_NULL_PARAMS);
+    YdbQueryResult result = YdbGetSyncQueryResult(
+        YdbExecuteQuery(session, query, &tx, YDB_NULL_PARAMS));
     if (YdbIsSuccess(YdbQueryResultAsStatus(result))) {
         *result_set = YdbGetResultSet(result, 0);
         return YdbQueryResultAsStatus(result);
@@ -142,8 +143,8 @@ YdbStatus UpsertSimple(YdbSession session, void* data) {
                   "(2, 6, 1, \"TBD\");";
 
     YdbTx tx = {.mode = YDB_TX_SERIALIZABLE_RW, .commit = true};
-    return YdbQueryResultAsStatus(
-        YdbExecuteQuerySync(session, query, &tx, YDB_NULL_PARAMS));
+    return YdbQueryResultAsStatus(YdbGetSyncQueryResult(
+        YdbExecuteQuery(session, query, &tx, YDB_NULL_PARAMS)));
 }
 
 YdbStatus SelectWithParams(YdbSession session, void* data) {
@@ -172,7 +173,8 @@ YdbStatus SelectWithParams(YdbSession session, void* data) {
     YdbParams params = YdbBuildParams(params_builder);
 
     YdbTx tx = {.mode = YDB_TX_SERIALIZABLE_RW, .commit = true};
-    YdbQueryResult result = YdbExecuteQuerySync(session, query, &tx, params);
+    YdbQueryResult result =
+        YdbGetSyncQueryResult(YdbExecuteQuery(session, query, &tx, params));
 
     if (YdbIsSuccess(YdbQueryResultAsStatus(result))) {
         *result_set = YdbGetResultSet(result, 0);
@@ -207,7 +209,7 @@ YdbStatus MultiStep(YdbSession session, void* data) {
     // transaction to remain active after query execution.
     YdbTx tx1 = {.mode = YDB_TX_SERIALIZABLE_RW};
     YdbQueryResult result1 =
-        YdbExecuteQuerySync(session, query1, &tx1, params1);
+        YdbGetSyncQueryResult(YdbExecuteQuery(session, query1, &tx1, params1));
 
     if (!YdbIsSuccess(YdbQueryResultAsStatus(result1))) {
         return YdbQueryResultAsStatus(result1);
@@ -256,7 +258,7 @@ YdbStatus MultiStep(YdbSession session, void* data) {
     YdbTx tx2 = {
         .mode = YDB_TX_TRANSACTION, .transaction = transaction, .commit = true};
     YdbQueryResult result2 =
-        YdbExecuteQuerySync(session, query2, &tx2, params2);
+        YdbGetSyncQueryResult(YdbExecuteQuery(session, query2, &tx2, params2));
 
     if (!YdbIsSuccess(YdbQueryResultAsStatus(result2))) {
         return YdbQueryResultAsStatus(result2);
@@ -268,7 +270,8 @@ YdbStatus MultiStep(YdbSession session, void* data) {
 YdbStatus ExplicitTcl(YdbQueryClient client, void* data) {
     YdbInstant air_date = YdbInstantNow();
 
-    YdbCreateSessionResult session_result = YdbCreateSessionSync(client);
+    YdbCreateSessionResult session_result =
+        YdbGetSyncCreateSessionResult(YdbCreateSession(client));
     if (!YdbIsSuccess(YdbCreateSessionResultAsStatus(session_result))) {
         return YdbCreateSessionResultAsStatus(session_result);
     }
@@ -276,7 +279,8 @@ YdbStatus ExplicitTcl(YdbQueryClient client, void* data) {
     YdbDestroyCreateSessionResult(session_result);
 
     YdbBeginTransactionResult transaction_result =
-        YdbBeginTransactionSync(session, YDB_TX_SERIALIZABLE_RW, false);
+        YdbGetSyncBeginTransactionResult(
+            YdbBeginTransaction(session, YDB_TX_SERIALIZABLE_RW, false));
     if (!YdbIsSuccess(YdbBeginTransactionResultAsStatus(transaction_result))) {
         return YdbBeginTransactionResultAsStatus(transaction_result);
     }
@@ -297,7 +301,7 @@ YdbStatus ExplicitTcl(YdbQueryClient client, void* data) {
 
     YdbTx tx = {.transaction = transaction};
     YdbQueryResult update_result =
-        YdbExecuteQuerySync(session, query, &tx, params);
+        YdbGetSyncQueryResult(YdbExecuteQuery(session, query, &tx, params));
 
     if (!YdbIsSuccess(YdbQueryResultAsStatus(update_result))) {
         return YdbQueryResultAsStatus(update_result);
@@ -306,7 +310,8 @@ YdbStatus ExplicitTcl(YdbQueryClient client, void* data) {
 
     YdbDestroyParams(params);
 
-    return YdbCommitSync(transaction);
+    return YdbCommitResultAsStatus(
+        YdbGetSyncCommitResult(YdbCommit(transaction)));
 }
 
 YdbStatus StreamQuerySelect(YdbQueryClient client, void* data) {
@@ -331,8 +336,8 @@ YdbStatus StreamQuerySelect(YdbQueryClient client, void* data) {
     YdbBuildParamValue(list_param);
     YdbParams params = YdbBuildParams(params_builder);
 
-    YdbExecuteQueryIterator resultStreamQuery =
-        YdbStreamExecuteQuerySync(client, query, NULL, params);
+    YdbExecuteQueryIterator resultStreamQuery = YdbGetSyncExecuteQueryIterator(
+        YdbStreamExecuteQuery(client, query, NULL, params));
 
     if (!YdbIsSuccess(YdbExecuteQueryIteratorAsStatus(resultStreamQuery))) {
         return YdbExecuteQueryIteratorAsStatus(resultStreamQuery);
@@ -342,7 +347,8 @@ YdbStatus StreamQuerySelect(YdbQueryClient client, void* data) {
     bool eos = false;
 
     while (!eos) {
-        YdbExecuteQueryPart streamPart = YdbReadNextSync(resultStreamQuery);
+        YdbExecuteQueryPart streamPart =
+            YdbGetSyncExecuteQueryPart(YdbReadNext(resultStreamQuery));
 
         if (!YdbIsSuccess(YdbExecuteQueryPartAsStatus(streamPart))) {
             eos = true;
@@ -381,8 +387,7 @@ YdbStatus StreamQuerySelect(YdbQueryClient client, void* data) {
                 }
 
                 printf(", Title: ");
-                char* title =
-                    YdbParseUtf8(YdbColumnParser(parser, "title"));
+                char* title = YdbParseUtf8(YdbColumnParser(parser, "title"));
                 if (title != NULL) {
                     printf("%s", title);
                 } else {
@@ -540,10 +545,10 @@ bool Run(YdbQueryClient client) {
     }
 
     printf("> StreamQuery:\n");
-    if (!UnwrapStatus(YdbRetryQuerySyncNoSession(client, &StreamQuerySelect, NULL))) {
+    if (!UnwrapStatus(
+            YdbRetryQuerySyncNoSession(client, &StreamQuerySelect, NULL))) {
         return false;
     }
-
 
     if (!(UnwrapStatus(YdbRetryQuerySync(client, &DropSeries, NULL)) &&
           UnwrapStatus(YdbRetryQuerySync(client, &DropSeasons, NULL)) &&

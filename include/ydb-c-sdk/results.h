@@ -23,11 +23,21 @@ bool YdbIsTransportError(YdbStatus status);
 // Deallocate using free()
 char* YdbGetErrorMessage(YdbStatus status);
 
+YDB_C_SDK_OPAQUE_STRUCT(YdbAsyncStatus)
+
+void YdbDestroyAsyncStatus(YdbAsyncStatus status);
+YdbStatus YdbGetSyncStatus(YdbAsyncStatus status);
+
 #define YDB_C_SDK_RESULT(name_no_ydb)                                          \
     YDB_C_SDK_OPAQUE_STRUCT(Ydb##name_no_ydb)                                  \
     void YdbDestroy##name_no_ydb(Ydb##name_no_ydb result);                     \
     /* Doesn't copy, don't destroy both */                                     \
-    YdbStatus Ydb##name_no_ydb##AsStatus(Ydb##name_no_ydb result);
+    YdbStatus Ydb##name_no_ydb##AsStatus(Ydb##name_no_ydb result);             \
+                                                                               \
+    YDB_C_SDK_OPAQUE_STRUCT(YdbAsync##name_no_ydb)                             \
+    void YdbDestroyAsync##name_no_ydb(YdbAsync##name_no_ydb result);           \
+    /* Destroys async result, no need to call  YdbDestroyAsync* */             \
+    Ydb##name_no_ydb YdbGetSync##name_no_ydb(YdbAsync##name_no_ydb result);
 
 YDB_C_SDK_RESULT(QueryResult)
 

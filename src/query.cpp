@@ -17,7 +17,8 @@ void YdbDestroyQueryClient(YdbQueryClient client) {
     delete YdbPtrFromOpaque<NYdb::NQuery::TQueryClient>(client);
 }
 
-YDB_C_SDK_RESULT_IMPL(CreateSessionResult, NYdb::NQuery::TCreateSessionResult)
+YDB_C_SDK_RESULT_IMPL(CreateSessionResult, NYdb::NQuery::TCreateSessionResult,
+                      NYdb::NQuery::TAsyncCreateSessionResult)
 
 YdbSession YdbCreateSessionResultGetSession(YdbCreateSessionResult result) {
     return TO_NEW_OPAQUE(
@@ -25,11 +26,10 @@ YdbSession YdbCreateSessionResultGetSession(YdbCreateSessionResult result) {
         YdbFromOpaque<NYdb::NQuery::TCreateSessionResult>(result).GetSession());
 }
 
-YdbCreateSessionResult YdbCreateSessionSync(YdbQueryClient client) {
-    return TO_NEW_OPAQUE(NYdb::NQuery::TCreateSessionResult,
-                         YdbFromOpaque<NYdb::NQuery::TQueryClient>(client)
-                             .GetSession()
-                             .GetValueSync());
+YdbAsyncCreateSessionResult YdbCreateSession(YdbQueryClient client) {
+    return TO_NEW_OPAQUE(
+        NYdb::NQuery::TAsyncCreateSessionResult,
+        YdbFromOpaque<NYdb::NQuery::TQueryClient>(client).GetSession());
 }
 }
 
@@ -71,7 +71,8 @@ NYdb::NQuery::TTxControl YdbCreateTx(YdbTx* tx_) {
 extern "C" {
 
 YDB_C_SDK_RESULT_IMPL(BeginTransactionResult,
-                      NYdb::NQuery::TBeginTransactionResult)
+                      NYdb::NQuery::TBeginTransactionResult,
+                      NYdb::NQuery::TAsyncBeginTransactionResult)
 
 YdbTransaction
 YdbBeginTransactionResultGetTransaction(YdbBeginTransactionResult result) {
@@ -81,34 +82,32 @@ YdbBeginTransactionResultGetTransaction(YdbBeginTransactionResult result) {
             .GetTransaction());
 }
 
-YdbBeginTransactionResult
-YdbBeginTransactionSync(YdbSession session, YdbTxMode mode,
-                        bool allow_inconsistent_reads) {
-    return TO_NEW_OPAQUE(NYdb::NQuery::TBeginTransactionResult,
-                         YdbFromOpaque<NYdb::NQuery::TSession>(session)
-                             .BeginTransaction(YdbCreateTxSettings(
-                                 mode, allow_inconsistent_reads))
-                             .GetValueSync());
+YdbAsyncBeginTransactionResult
+YdbBeginTransaction(YdbSession session, YdbTxMode mode,
+                    bool allow_inconsistent_reads) {
+    return TO_NEW_OPAQUE(
+        NYdb::NQuery::TAsyncBeginTransactionResult,
+        YdbFromOpaque<NYdb::NQuery::TSession>(session).BeginTransaction(
+            YdbCreateTxSettings(mode, allow_inconsistent_reads)));
 }
 
-YdbStatus YdbCommitSync(YdbTransaction transaction) {
-    return PTR_TO_OPAQUE(
-        static_cast<NYdb::TStatus*>(new NYdb::NQuery::TCommitTransactionResult{
-            YdbFromOpaque<NYdb::NQuery::TTransaction>(transaction)
-                .Commit()
-                .GetValueSync()}));
+YDB_C_SDK_RESULT_IMPL(CommitResult, NYdb::NQuery::TCommitTransactionResult, NYdb::NQuery::TAsyncCommitTransactionResult)
+
+YdbAsyncCommitResult YdbCommit(YdbTransaction transaction) {
+    return TO_NEW_OPAQUE(
+        NYdb::NQuery::TAsyncCommitTransactionResult,
+        YdbFromOpaque<NYdb::NQuery::TTransaction>(transaction).Commit());
 }
 
-YdbQueryResult YdbExecuteQuerySync(YdbSession session_, char* query, YdbTx* tx_,
-                                   YdbParams params_) {
+YdbAsyncQueryResult YdbExecuteQuery(YdbSession session_, char* query,
+                                    YdbTx* tx_, YdbParams params_) {
     auto& session = YdbFromOpaque<NYdb::NQuery::TSession>(session_);
     auto* params = YdbPtrFromOpaque<NYdb::TParams>(params_);
     auto future = params
                       ? session.ExecuteQuery(query, YdbCreateTx(tx_), *params)
                       : session.ExecuteQuery(query, YdbCreateTx(tx_));
-    return {static_cast<void*>(
-        new NYdb::NQuery::TExecuteQueryResult{future.GetValueSync()})};
-}
+    return TO_NEW_OPAQUE(NYdb::NQuery::TAsyncExecuteQueryResult, future);
+};
 
 YdbTransaction YdbQueryTransaction(YdbQueryResult result) {
     if (auto transaction =
@@ -133,7 +132,7 @@ YdbStatus YdbRetryQuerySync(YdbQueryClient client, YdbSyncRetryable query,
                 return status_value;
             });
 
-    return {static_cast<void*>(new NYdb::TStatus(std::move(status)))};
+    return TO_NEW_OPAQUE(NYdb::TStatus, std::move(status));
 }
 
 YdbStatus YdbRetryQuerySyncNoSession(YdbQueryClient client,
@@ -150,6 +149,40 @@ YdbStatus YdbRetryQuerySyncNoSession(YdbQueryClient client,
                 return status_value;
             });
 
-    return {static_cast<void*>(new NYdb::TStatus(std::move(status)))};
+    return TO_NEW_OPAQUE(NYdb::TStatus, std::move(status));
+}
+
+YdbAsyncStatus YdbRetryQuery(YdbQueryClient client, YdbRetryable query,
+                             void* data) {
+    NYdb::TAsyncStatus status =
+        YdbFromOpaque<NYdb::NQuery::TQueryClient>(client).RetryQuery(
+            [query, data](NYdb::NQuery::TSession session) {
+                NYdb::TAsyncStatus* status =
+                    YdbPtrFromOpaque<NYdb::TAsyncStatus>(
+                        query({static_cast<void*>(&session)}, data));
+
+                NYdb::TAsyncStatus status_value = std::move(*status);
+                delete status;
+                return status_value;
+            });
+
+    return TO_NEW_OPAQUE(NYdb::TAsyncStatus, std::move(status));
+}
+
+YdbAsyncStatus YdbRetryQueryNoSession(YdbQueryClient client,
+                                      YdbRetryableNoSession query, void* data) {
+    NYdb::TAsyncStatus status =
+        YdbFromOpaque<NYdb::NQuery::TQueryClient>(client).RetryQuery(
+            [query, data](NYdb::NQuery::TQueryClient client) {
+                NYdb::TAsyncStatus* status =
+                    YdbPtrFromOpaque<NYdb::TAsyncStatus>(
+                        query({static_cast<void*>(&client)}, data));
+
+                NYdb::TAsyncStatus status_value = std::move(*status);
+                delete status;
+                return status_value;
+            });
+
+    return TO_NEW_OPAQUE(NYdb::TAsyncStatus, std::move(status));
 }
 }

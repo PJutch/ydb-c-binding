@@ -12,14 +12,14 @@ extern "C" {
 
 YDB_C_SDK_RESULT(ExecuteQueryIterator)
 
-YdbExecuteQueryIterator YdbStreamExecuteQuerySync(YdbQueryClient client,
+YdbAsyncExecuteQueryIterator YdbStreamExecuteQuery(YdbQueryClient client,
                                                   char* query, YdbTx* tx,
                                                   YdbParams params);
 
 
 YDB_C_SDK_RESULT(ExecuteQueryPart)
 
-YdbExecuteQueryPart YdbReadNextSync(YdbExecuteQueryIterator iterator);
+YdbAsyncExecuteQueryPart YdbReadNext(YdbExecuteQueryIterator iterator);
 
 bool YdbIsEos(YdbExecuteQueryPart part);
 bool YdbExecuteQueryPartHasResultSet(YdbExecuteQueryPart part);
