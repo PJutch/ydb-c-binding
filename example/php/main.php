@@ -1,6 +1,11 @@
 <?php
 
-$ydb = FFI::load("ffi.h");
+try {
+    $ydb = FFI::load("build/ydb-c-sdk.i");
+} catch (FFI\Exception $e) {
+    echo "Generate ffi data using\n$ mkdir build; cd build; cmake ..\n";
+    exit(1);
+}
 
 require_once "data.php";
 
@@ -199,7 +204,7 @@ function Run($client) {
         echo "> SelectSimple:\nSeries";
 
         echo ", Id: ";
-        $id_exists = $ydb->new("bool");
+        $id_exists = $ydb->new("uint8_t");
         $id = $ydb->YdbParseUint64($ydb->YdbColumnParser($parser, "series_id"), FFI::addr($id_exists));
         if ($id_exists->cdata) {
             echo $id;
@@ -216,7 +221,7 @@ function Run($client) {
         }
 
         echo ", Release date: ";
-        $parsed_date = $ydb->new("bool");
+        $parsed_date = $ydb->new("uint8_t");
         $release_date = $ydb->YdbParseDate($ydb->YdbColumnParser($parser, "release_date"), FFI::addr($parsed_date));
         if ($parsed_date->cdata) {
             echo FFI::string($ydb->YdbFormatLocalTime($release_date, "%Y-%m-%d"));

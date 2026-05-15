@@ -2,7 +2,7 @@
 
 include(CMakeFindDependencyMacro)
 
-find_dependency(YDB-CPP-SDK REQUIRED)
+# find_dependency(YDB-CPP-SDK REQUIRED)
 
 include("${CMAKE_CURRENT_LIST_DIR}/ydb-c-sdk-targets.cmake")
 

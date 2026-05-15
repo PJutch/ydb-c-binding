@@ -6,9 +6,9 @@
 
 #include <string.h>
 
-YdbInstant YdbInstantNow() {
-    return TInstant::Now().GetValue();
-}
+extern "C" {
+
+YdbInstant YdbInstantNow() { return TInstant::Now().GetValue(); }
 
 #define YDB_INSTANT_FROM(units)                                                \
     YdbInstant YdbInstantFrom##units(uint64_t value) {                         \
@@ -121,4 +121,5 @@ YdbDuration YdbDurationParse(char* duration, bool* ok) {
     }
 
     return parsed.GetValue();
+}
 }

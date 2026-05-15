@@ -27,7 +27,7 @@ uint64_t YdbInstantToHours(YdbInstant instant);
 uint64_t YdbInstantToMicroSeconds(YdbInstant instant);
 uint64_t YdbInstantToMilliSeconds(YdbInstant instant);
 uint64_t YdbInstantToMinutes(YdbInstant instant);
-uint64_t YdbInstantToSeConds(YdbInstant instant);
+uint64_t YdbInstantToSeconds(YdbInstant instant);
 
 // Deallocate using free()
 char* YdbInstantToIso8601(YdbInstant instant);
