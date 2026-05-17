@@ -18,6 +18,8 @@ void YdbDestroyQueryClient(YdbQueryClient client);
 
 YDB_C_SDK_OPAQUE_STRUCT(YdbSession)
 
+void YdbDestroySession(YdbSession session);
+
 YDB_C_SDK_RESULT(CreateSessionResult)
 
 YdbSession YdbCreateSessionResultGetSession(YdbCreateSessionResult result);
@@ -34,6 +36,8 @@ typedef enum YdbTxMode {
 } YdbTxMode;
 
 YDB_C_SDK_OPAQUE_STRUCT(YdbTransaction)
+
+void YdbDestroyTransaction(YdbTransaction transaction);
 
 #define NULL_TRANSACTION (YdbTransaction){NULL};
 

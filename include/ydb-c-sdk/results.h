@@ -31,12 +31,13 @@ YdbStatus YdbGetSyncStatus(YdbAsyncStatus status);
 #define YDB_C_SDK_RESULT(name_no_ydb)                                          \
     YDB_C_SDK_OPAQUE_STRUCT(Ydb##name_no_ydb)                                  \
     void YdbDestroy##name_no_ydb(Ydb##name_no_ydb result);                     \
-    /* Doesn't copy, don't destroy both */                                     \
-    YdbStatus Ydb##name_no_ydb##AsStatus(Ydb##name_no_ydb result);             \
+    YdbStatus Ydb##name_no_ydb##GetStatus(Ydb##name_no_ydb result);            \
+    /* Destroys result, don't call YdbDestroy* */                              \
+    YdbStatus Ydb##name_no_ydb##ToStatus(Ydb##name_no_ydb result);             \
                                                                                \
     YDB_C_SDK_OPAQUE_STRUCT(YdbAsync##name_no_ydb)                             \
     void YdbDestroyAsync##name_no_ydb(YdbAsync##name_no_ydb result);           \
-    /* Destroys async result, no need to call  YdbDestroyAsync* */             \
+    /* Destroys async result, don't call  YdbDestroyAsync* */                  \
     Ydb##name_no_ydb YdbGetSync##name_no_ydb(YdbAsync##name_no_ydb result);
 
 YDB_C_SDK_RESULT(QueryResult)
@@ -44,7 +45,7 @@ YDB_C_SDK_RESULT(QueryResult)
 YDB_C_SDK_OPAQUE_STRUCT(YdbResultSet)
 
 YdbResultSet YdbGetResultSet(YdbQueryResult result, int result_index);
-void DestroyResultSet(YdbResultSet result_set);
+void YdbDestroyResultSet(YdbResultSet result_set);
 
 YDB_C_SDK_OPAQUE_STRUCT(YdbResultSetParser)
 

@@ -59,7 +59,7 @@ YdbResultSet YdbGetResultSet(YdbQueryResult result, int result_index) {
             result_index)}};
 }
 
-void DestroyResultSet(YdbResultSet result_set) {
+void YdbDestroyResultSet(YdbResultSet result_set) {
     delete YdbPtrFromOpaque<NYdb::TResultSet>(result_set);
 }
 

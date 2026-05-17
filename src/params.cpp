@@ -49,8 +49,9 @@ void YdbBuildParamValue(YdbParamValueBuilder builder) {
 }
 
 YdbParams YdbBuildParams(YdbParamsBuilder builder) {
-    return {static_cast<void*>(new NYdb::TParams{
-        YdbFromOpaque<NYdb::TParamsBuilder>(builder).Build()})};
+    NYdb::TParams params = YdbFromOpaque<NYdb::TParamsBuilder>(builder).Build();
+    delete YdbPtrFromOpaque<NYdb::TParamsBuilder>(builder);
+    return TO_NEW_OPAQUE(NYdb::TParams, std::move(params));
 }
 
 void YdbDestroyParams(YdbParams params) {

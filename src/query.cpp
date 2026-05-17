@@ -17,6 +17,10 @@ void YdbDestroyQueryClient(YdbQueryClient client) {
     delete YdbPtrFromOpaque<NYdb::NQuery::TQueryClient>(client);
 }
 
+void YdbDestroySession(YdbSession session) {
+    delete YdbPtrFromOpaque<NYdb::NQuery::TSession>(session);
+}
+
 YDB_C_SDK_RESULT_IMPL(CreateSessionResult, NYdb::NQuery::TCreateSessionResult,
                       NYdb::NQuery::TAsyncCreateSessionResult)
 
@@ -70,6 +74,10 @@ NYdb::NQuery::TTxControl YdbCreateTx(YdbTx* tx_) {
 
 extern "C" {
 
+void YdbDestroyTransaction(YdbTransaction transaction) {
+    delete YdbPtrFromOpaque<NYdb::NQuery::TTransaction>(transaction);
+}
+
 YDB_C_SDK_RESULT_IMPL(BeginTransactionResult,
                       NYdb::NQuery::TBeginTransactionResult,
                       NYdb::NQuery::TAsyncBeginTransactionResult)
@@ -91,7 +99,8 @@ YdbBeginTransaction(YdbSession session, YdbTxMode mode,
             YdbCreateTxSettings(mode, allow_inconsistent_reads)));
 }
 
-YDB_C_SDK_RESULT_IMPL(CommitResult, NYdb::NQuery::TCommitTransactionResult, NYdb::NQuery::TAsyncCommitTransactionResult)
+YDB_C_SDK_RESULT_IMPL(CommitResult, NYdb::NQuery::TCommitTransactionResult,
+                      NYdb::NQuery::TAsyncCommitTransactionResult)
 
 YdbAsyncCommitResult YdbCommit(YdbTransaction transaction) {
     return TO_NEW_OPAQUE(

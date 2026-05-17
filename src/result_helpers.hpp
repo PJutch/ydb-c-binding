@@ -6,22 +6,26 @@
         delete YdbPtrFromOpaque<cpp_sdk_type>(result);                         \
     }                                                                          \
                                                                                \
-    /* Doesn't copy, don't destroy both */                                     \
-    YdbStatus Ydb##name_no_ydb##AsStatus(Ydb##name_no_ydb result) {            \
-        auto* as_status = static_cast<NYdb::TStatus*>(                         \
-            YdbPtrFromOpaque<cpp_sdk_type>(result));                           \
-        return PTR_TO_OPAQUE(as_status);                                       \
+    YdbStatus Ydb##name_no_ydb##GetStatus(Ydb##name_no_ydb result) {           \
+        auto as_status =                                                       \
+            static_cast<NYdb::TStatus>(YdbFromOpaque<cpp_sdk_type>(result));   \
+        return TO_NEW_OPAQUE(NYdb::TStatus, as_status);                        \
+    }                                                                          \
+                                                                               \
+    YdbStatus Ydb##name_no_ydb##ToStatus(Ydb##name_no_ydb result) {           \
+        YdbStatus status = Ydb##name_no_ydb##GetStatus(result);                \
+        YdbDestroy##name_no_ydb(result);                                       \
+        return status;                                                         \
     }                                                                          \
                                                                                \
     void YdbDestroyAsync##name_no_ydb(YdbAsync##name_no_ydb result) {          \
         delete YdbPtrFromOpaque<async_cpp_sdk_type>(result);                   \
     }                                                                          \
                                                                                \
-    /* Destroys async result, no need to call  YdbDestroyAsync* */             \
     Ydb##name_no_ydb YdbGetSync##name_no_ydb(YdbAsync##name_no_ydb result) {   \
         Ydb##name_no_ydb sync_result = TO_NEW_OPAQUE(                          \
             cpp_sdk_type,                                                      \
-            YdbFromOpaque<async_cpp_sdk_type>(result).ExtractValueSync());         \
+            YdbFromOpaque<async_cpp_sdk_type>(result).ExtractValueSync());     \
         YdbDestroyAsync##name_no_ydb(result);                                  \
         return sync_result;                                                    \
     }

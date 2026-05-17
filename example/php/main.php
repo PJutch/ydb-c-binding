@@ -22,7 +22,7 @@ function CreateSeries($session, $data) {
         );
     END;
 
-    return $ydb->YdbQueryResultAsStatus($ydb->YdbGetSyncQueryResult(
+    return $ydb->YdbQueryResultToStatus($ydb->YdbGetSyncQueryResult(
         $ydb->YdbExecuteQuery($session, $query, NULL, $ydb->new('YdbParams'))));
 }
 
@@ -40,7 +40,7 @@ function CreateSeasons($session, $data) {
         );
     END;
 
-    return $ydb->YdbQueryResultAsStatus($ydb->YdbGetSyncQueryResult(
+    return $ydb->YdbQueryResultToStatus($ydb->YdbGetSyncQueryResult(
         $ydb->YdbExecuteQuery($session, $query, NULL, $ydb->new('YdbParams'))));
 }
 
@@ -58,7 +58,7 @@ function CreateEpisodes($session, $data) {
         );
     END;
 
-    return $ydb->YdbQueryResultAsStatus($ydb->YdbGetSyncQueryResult(
+    return $ydb->YdbQueryResultToStatus($ydb->YdbGetSyncQueryResult(
         $ydb->YdbExecuteQuery($session, $query, NULL, $ydb->new('YdbParams'))));
 }
 
@@ -66,7 +66,7 @@ function DropSeries($session, $data) {
     global $ydb;
 
     $query = "DROP TABLE series";
-    return $ydb->YdbQueryResultAsStatus($ydb->YdbGetSyncQueryResult(
+    return $ydb->YdbQueryResultToStatus($ydb->YdbGetSyncQueryResult(
         $ydb->YdbExecuteQuery($session, $query, NULL, $ydb->new('YdbParams'))));
 }
 
@@ -74,7 +74,7 @@ function DropSeasons($session, $data) {
     global $ydb;
 
     $query = "DROP TABLE seasons";
-    return $ydb->YdbQueryResultAsStatus($ydb->YdbGetSyncQueryResult(
+    return $ydb->YdbQueryResultToStatus($ydb->YdbGetSyncQueryResult(
         $ydb->YdbExecuteQuery($session, $query, NULL, $ydb->new('YdbParams'))));
 }
 
@@ -82,7 +82,7 @@ function DropEpisodes($session, $data) {
     global $ydb;
 
     $query = "DROP TABLE episodes";
-    return $ydb->YdbQueryResultAsStatus($ydb->YdbGetSyncQueryResult(
+    return $ydb->YdbQueryResultToStatus($ydb->YdbGetSyncQueryResult(
         $ydb->YdbExecuteQuery($session, $query, NULL, $ydb->new('YdbParams'))));
 }
 
@@ -142,7 +142,11 @@ function FillData($session, $data) {
     $tx = $ydb->new("YdbTx");
     $tx->mode = $ydb->YDB_TX_SERIALIZABLE_RW;
     $tx->commit = true;
-    return $ydb->YdbQueryResultAsStatus($ydb->YdbGetSyncQueryResult($ydb->YdbExecuteQuery($session, $query, FFI::addr($tx), $params)));
+    $status = $ydb->YdbQueryResultToStatus($ydb->YdbGetSyncQueryResult($ydb->YdbExecuteQuery($session, $query, FFI::addr($tx), $params)));
+
+    $ydb->YdbDestroyParams($params);
+
+    return $status;
 }
 
 function SelectSimple($session, $data) {
@@ -160,11 +164,13 @@ function SelectSimple($session, $data) {
     $tx->mode = $ydb->YDB_TX_SERIALIZABLE_RW;
     $tx->commit = true;
     $result = $ydb->YdbGetSyncQueryResult($ydb->YdbExecuteQuery($session, $query, FFI::addr($tx), $ydb->new("YdbParams")));
-    if ($ydb->YdbIsSuccess($ydb->YdbQueryResultAsStatus($result))) {
+
+    $status = $ydb->YdbQueryResultGetStatus($result);
+    if ($ydb->YdbIsSuccess($status)) {
         $result_set[0] = $ydb->YdbGetResultSet($result, 0);
-        return $ydb->YdbQueryResultAsStatus($result);
+        return $status;
     }
-    return $ydb->YdbQueryResultAsStatus($result);
+    return $status;
 }
 
 function UpsertSimple($session, $data) {
@@ -177,7 +183,7 @@ function UpsertSimple($session, $data) {
     $tx = $ydb->new("YdbTx");
     $tx->mode = $ydb->YDB_TX_SERIALIZABLE_RW;
     $tx->commit = true;
-    return $ydb->YdbQueryResultAsStatus($ydb->YdbGetSyncQueryResult(
+    return $ydb->YdbQueryResultToStatus($ydb->YdbGetSyncQueryResult(
         $ydb->YdbExecuteQuery($session, $query, NULL, $ydb->new('YdbParams'))));
 }
 
@@ -215,11 +221,12 @@ function SelectWithParams($session, $data) {
     $result = $ydb->YdbGetSyncQueryResult(
         $ydb->YdbExecuteQuery($session, $query, FFI::addr($tx), $params));
 
-    if ($ydb->YdbIsSuccess($ydb->YdbQueryResultAsStatus($result))) {
+    $status = $ydb->YdbQueryResultGetStatus($result);
+    if ($ydb->YdbIsSuccess($status)) {
         $result_set[0] = $ydb->YdbGetResultSet($result, 0);
     }
 
-    return $ydb->YdbQueryResultAsStatus($result);
+    return $status;
 }
 
 function UnwrapStatus($status) {
@@ -230,6 +237,7 @@ function UnwrapStatus($status) {
         $error_string = FFI::string($error);
         echo "fatal error:\n$error_string\n";
         $ydb->free($error);
+        $ydb->YdbDestroyStatus($status);
         return false;
     }
     $ydb->YdbDestroyStatus($status);
@@ -274,6 +282,7 @@ function Run($client) {
         } else {
             echo "(NULL)";
         }
+        $ydb->free($title);
 
         echo ", Release date: ";
         $parsed_date = $ydb->new("uint8_t");
@@ -286,6 +295,8 @@ function Run($client) {
 
         echo "\n";
     }
+    $ydb->YdbDestroyResultSet($result_set);
+    $ydb->YdbDestroyResultSetParser($parser);
 
     if (!UnwrapStatus($ydb->YdbRetryQuerySync($client, Closure::fromCallable('UpsertSimple'), NULL))) {
         return false;
@@ -306,6 +317,7 @@ function Run($client) {
         } else {
             echo "(NULL)";
         }
+        $ydb->free($title);
 
         echo ", Series title: ";
         $title = $ydb->YdbParseUtf8($ydb->YdbColumnParser($parser, "series_title"));
@@ -314,9 +326,12 @@ function Run($client) {
         } else {
             echo "(NULL)";
         }
+        $ydb->free($title);
 
         echo "\n";
     }
+    $ydb->YdbDestroyResultSet($result_set);
+    $ydb->YdbDestroyResultSetParser($parser);
 
     if (!(UnwrapStatus($ydb->YdbRetryQuerySync($client, Closure::fromCallable('DropSeries'), NULL)) &&
           UnwrapStatus($ydb->YdbRetryQuerySync($client, Closure::fromCallable('DropSeasons'), NULL)) &&
