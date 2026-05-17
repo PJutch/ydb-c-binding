@@ -229,6 +229,306 @@ function SelectWithParams($session, $data) {
     return $status;
 }
 
+function MultiStep($session, $data) {
+    global $ydb;
+
+    $result_set = $ydb->cast("YdbResultSet*", $data);
+
+    $seriesId = 2;
+    $seasonId = 5;
+    $query1 = <<<END
+        DECLARE \$seriesId AS Uint64;
+        DECLARE \$seasonId AS Uint64;
+        SELECT first_aired AS from_date FROM seasons
+        WHERE series_id = \$seriesId AND season_id = \$seasonId;
+    END;
+
+    $params1_builder = $ydb->YdbCreateParamsBuilder();
+    $series_id_param =
+        $ydb->YdbAddParam($params1_builder, "\$seriesId");
+    $ydb->YdbParamUint64($series_id_param, $seriesId);
+    $ydb->YdbBuildParamValue($series_id_param);
+    $season_id_param =
+        $ydb->YdbAddParam($params1_builder, "\$seasonId");
+    $ydb->YdbParamUint64($season_id_param, $seasonId);
+    $ydb->YdbBuildParamValue($season_id_param);
+    $params1 = $ydb->YdbBuildParams($params1_builder);
+
+    // Execute the first query to retrieve the required values for the client.
+    // Transaction control settings do not set the CommitTx flag, allowing the
+    // transaction to remain active after query execution.
+    $tx1 = $ydb->new("YdbTx");
+    $tx1->mode = $ydb->YDB_TX_SERIALIZABLE_RW;
+    $result1 =
+        $ydb->YdbGetSyncQueryResult($ydb->YdbExecuteQuery($session, $query1, FFI::addr($tx1), $params1));
+
+    $status1 = $ydb->YdbQueryResultGetStatus($result1);
+    if (!$ydb->YdbIsSuccess($status1)) {
+        $ydb->YdbDestroyStatus($status1);
+        $ydb->YdbDestroyParams($params1);
+        return $ydb->YdbQueryResultToStatus($result1);
+    }
+    $ydb->YdbDestroyStatus($status1);
+
+    // Get the active transaction id
+    $transaction = $ydb->YdbQueryTransaction($result1);
+
+    // Processing the request result
+    $temp_result_set = $ydb->YdbGetResultSet($result1, 0);
+    $parser = $ydb->YdbCreateResultSetParser($temp_result_set);
+    $ydb->YdbNextRow($parser);
+
+    $date_exists = $ydb->new("uint8_t");
+    $from_date = $ydb->YdbInstantFromDays(
+        $ydb->YdbParseUint64($ydb->YdbColumnParser($parser, "from_date"), FFI::addr($date_exists)));
+    $to_date = $from_date + $ydb->YdbDurationFromDays(15);
+
+    $ydb->YdbDestroyResultSet($temp_result_set);
+    $ydb->YdbDestroyResultSetParser($parser);
+    $ydb->YdbDestroyQueryResult($result1);
+
+    // Construct next query based on the results of client logic
+    $query2 = <<<END
+        DECLARE \$seriesId AS Uint64;
+        DECLARE \$fromDate AS Uint64;
+        DECLARE \$toDate AS Uint64;
+        SELECT season_id, episode_id, title, air_date FROM episodes
+        WHERE series_id = \$seriesId AND air_date >= \$fromDate AND air_date <
+        \$toDate;
+    END;
+
+    $params2_builder = $ydb->YdbCreateParamsBuilder();
+    $series_id_param2 =
+        $ydb->YdbAddParam($params2_builder, "\$seriesId");
+    $ydb->YdbParamUint64($series_id_param2, $seriesId);
+    $ydb->YdbBuildParamValue($series_id_param2);
+    $from_date_param =
+        $ydb->YdbAddParam($params2_builder, "\$fromDate");
+    $ydb->YdbParamUint64($from_date_param, $ydb->YdbInstantToDays($from_date));
+    $ydb->YdbBuildParamValue($from_date_param);
+    $to_date_param =
+        $ydb->YdbAddParam($params2_builder, "\$toDate");
+    $ydb->YdbParamUint64($to_date_param, $ydb->YdbInstantToDays($to_date));
+    $ydb->YdbBuildParamValue($to_date_param);
+    $params2 = $ydb->YdbBuildParams($params2_builder);
+
+    // Execute the second query.
+    // The transaction control settings continue the active transaction (tx)
+    // and commit it at the end of the second query execution.
+    $tx2 = $ydb->new("YdbTx");
+    $tx2->mode = $ydb->YDB_TX_TRANSACTION;
+    $tx2->transaction = $transaction;
+    $tx2->commit = true;
+
+    $result2 =
+        $ydb->YdbGetSyncQueryResult($ydb->YdbExecuteQuery($session, $query2, FFI::addr($tx2), $params2));
+
+    $status = $ydb->YdbQueryResultGetStatus($result2);
+    if ($ydb->YdbIsSuccess($status)) {
+        $result_set[0] = $ydb->YdbGetResultSet($result2, 0);
+    }
+
+    $ydb->YdbDestroyQueryResult($result2);
+    $ydb->YdbDestroyParams($params1);
+    $ydb->YdbDestroyParams($params2);
+    $ydb->YdbDestroyTransaction($transaction);
+
+    return $status;
+}
+
+function ExplicitTcl($client, $data) {
+    global $ydb;
+
+    $air_date = $ydb->YdbInstantNow();
+
+    $session_result =
+        $ydb->YdbGetSyncCreateSessionResult($ydb->YdbCreateSession($client));
+
+    $status = $ydb->YdbCreateSessionResultGetStatus($session_result);
+    if (!$ydb->YdbIsSuccess($status)) {
+        $ydb->YdbDestroyStatus($status);
+        return $ydb->YdbCreateSessionResultToStatus($session_result);
+    }
+    $ydb->YdbDestroyStatus($status);
+
+    $session = $ydb->YdbCreateSessionResultGetSession($session_result);
+    $ydb->YdbDestroyCreateSessionResult($session_result);
+
+    $transaction_result =
+        $ydb->YdbGetSyncBeginTransactionResult(
+            $ydb->YdbBeginTransaction($session, $ydb->YDB_TX_SERIALIZABLE_RW, false));
+
+    $status = $ydb->YdbBeginTransactionResultGetStatus($transaction_result);
+    if (!$ydb->YdbIsSuccess($status)) {
+        return $ydb->YdbBeginTransactionResultToStatus($transaction_result);
+    }
+    $ydb->YdbDestroyStatus($status);
+
+    $transaction =
+        $ydb->YdbBeginTransactionResultGetTransaction($transaction_result);
+    $ydb->YdbDestroyBeginTransactionResult($transaction_result);
+
+    $query = <<<END
+        DECLARE \$airDate AS Date;
+        UPDATE episodes SET air_date = CAST(\$airDate AS Uint16)
+        WHERE title = "TBD";
+    END;
+
+    $params_builder = $ydb->YdbCreateParamsBuilder();
+    $air_date_param =
+        $ydb->YdbAddParam($params_builder, "\$airDate");
+    $ydb->YdbParamDate($air_date_param, $air_date);
+    $ydb->YdbBuildParamValue($air_date_param);
+    $params = $ydb->YdbBuildParams($params_builder);
+
+    $tx = $ydb->new("YdbTx");
+    $tx->transaction = $transaction;
+    $update_result =
+        $ydb->YdbGetSyncQueryResult($ydb->YdbExecuteQuery($session, $query, FFI::addr($tx), $params));
+
+    $status1 = $ydb->YdbQueryResultGetStatus($update_result);
+    if (!$ydb->YdbIsSuccess($status1)) {
+        $ydb->YdbDestroyParams($params);
+        $ydb->YdbDestroyTransaction($transaction);
+        $ydb->YdbDestroySession($session);
+
+        return $status1;
+    }
+    $ydb->YdbDestroyStatus($status1);
+    $ydb->YdbDestroyQueryResult($update_result);
+
+    $status2 =
+        $ydb->YdbCommitResultToStatus($ydb->YdbGetSyncCommitResult($ydb->YdbCommit($transaction)));
+
+    $ydb->YdbDestroyParams($params);
+    $ydb->YdbDestroyTransaction($transaction);
+    $ydb->YdbDestroySession($session);
+
+    return $status2;
+}
+
+function StreamQuerySelect($client, $data) {
+    global $ydb;
+
+    $query = <<<END
+        DECLARE \$series AS List<UInt64>;
+        SELECT series_id, season_id, title, CAST(first_aired AS Date) AS first_aired
+        FROM seasons
+        WHERE series_id IN \$series
+        ORDER BY season_id;
+    END;
+
+    $params_builder = $ydb->YdbCreateParamsBuilder();
+    $list_param = $ydb->YdbAddParam($params_builder, "\$series");
+    $ydb->YdbParamBeginList($list_param);
+
+    $ydb->YdbParamAddListItem($list_param);
+    $ydb->YdbParamUint64($list_param, 1);
+
+    $ydb->YdbParamAddListItem($list_param);
+    $ydb->YdbParamUint64($list_param, 10);
+
+    $ydb->YdbParamEndList($list_param);
+    $ydb->YdbBuildParamValue($list_param);
+    $params = $ydb->YdbBuildParams($params_builder);
+
+    $resultStreamQuery = $ydb->YdbGetSyncExecuteQueryIterator(
+        $ydb->YdbStreamExecuteQuery($client, $query, NULL, $params));
+
+    $status = $ydb->YdbExecuteQueryIteratorGetStatus($resultStreamQuery);
+    if (!$ydb->YdbIsSuccess($status)) {
+        $ydb->YdbDestroyStatus($status);
+        $ydb->YdbDestroyParams($params);
+        return $ydb->YdbExecuteQueryIteratorToStatus($resultStreamQuery);
+    }
+    $ydb->YdbDestroyStatus($status);
+
+    // Iterates over results
+    $eos = false;
+
+    while (!$eos) {
+        $streamPart =
+            $ydb->YdbGetSyncExecuteQueryPart($ydb->YdbReadNext($resultStreamQuery));
+
+        $status = $ydb->YdbExecuteQueryPartGetStatus($streamPart);
+        if (!$ydb->YdbIsSuccess($status)) {
+            $eos = true;
+            if (!$ydb->YdbIsEos($streamPart)) {
+                $ydb->YdbDestroyExecuteQueryIterator($resultStreamQuery);
+                $ydb->YdbDestroyExecuteQueryPart($streamPart);
+                return $status;
+            }
+            $ydb->YdbDestroyExecuteQueryPart($streamPart);
+            $ydb->YdbDestroyStatus($status);
+            continue;
+        }
+        $ydb->YdbDestroyStatus($status);
+
+        // It is possible to duplicate lines in the output stream due to an
+        // external retryer.
+        if ($ydb->YdbExecuteQueryPartHasResultSet($streamPart)) {
+            $rs = $ydb->YdbExecuteQueryPartGetResultSet($streamPart);
+            $parser = $ydb->YdbCreateResultSetParser($rs);
+            while ($ydb->YdbNextRow($parser)) {
+                echo "Season";
+
+                echo ", SeriesId: ";
+                $has_series_id = FFI::new("uint8_t");
+                $series_id = $ydb->YdbParseUint64(
+                    $ydb->YdbColumnParser($parser, "series_id"), FFI::addr($has_series_id));
+                if ($has_series_id) {
+                    echo $series_id;
+                } else {
+                    echo "(NULL)";
+                }
+
+                echo ", SeasonId: ";
+                $has_season_id = FFI::new("uint8_t");
+                $season_id = $ydb->YdbParseUint64(
+                    $ydb->YdbColumnParser($parser, "season_id"), FFI::addr($has_season_id));
+                if ($has_season_id) {
+                    echo $season_id;
+                } else {
+                    echo "(NULL)";
+                }
+
+                echo ", Title: ";
+                $title = $ydb->YdbParseUtf8($ydb->YdbColumnParser($parser, "title"));
+                if ($title != NULL) {
+                    echo FFI::string($title);
+                } else {
+                    echo "(NULL)";
+                }
+                $ydb->free($title);
+
+                echo ", Air date: ";
+                $has_air_date = FFI::new("uint8_t");
+                $air_date = $ydb->YdbParseDate(
+                    $ydb->YdbColumnParser($parser, "first_aired"), FFI::addr($has_air_date));
+                if ($has_air_date) {
+                    $formatted_date =
+                        $ydb->YdbFormatLocalTime($air_date, "%Y-%m-%d");
+                    echo FFI::string($formatted_date);
+                    $ydb->free($formatted_date);
+                } else {
+                    echo "(NULL)";
+                }
+
+                echo "\n";
+            }
+
+            $ydb->YdbDestroyResultSet($rs);
+            $ydb->YdbDestroyResultSetParser($parser);
+        }
+
+        $ydb->YdbDestroyExecuteQueryPart($streamPart);
+    }
+
+    $ydb->YdbDestroyExecuteQueryIterator($resultStreamQuery);
+    $ydb->YdbDestroyParams($params);
+    return $ydb->YdbStatusOk();
+}
+
 function UnwrapStatus($status) {
     global $ydb;
 
@@ -332,6 +632,55 @@ function Run($client) {
     }
     $ydb->YdbDestroyResultSet($result_set);
     $ydb->YdbDestroyResultSetParser($parser);
+
+    if (!UnwrapStatus($ydb->YdbRetryQuerySync($client, Closure::fromCallable('MultiStep'), FFI::addr($result_set)))) {
+        return false;
+    }
+
+    $parser = $ydb->YdbCreateResultSetParser($result_set);
+    echo "> MultiStep:\n";
+    while ($ydb->YdbNextRow($parser)) {
+        echo "Episode: ";
+        $episode_id_exits = $ydb->new("uint8_t");
+        $episode_id = $ydb->YdbParseUint64(
+            $ydb->YdbColumnParser($parser, "episode_id"), FFI::addr($episode_id_exits));
+        echo $episode_id;
+
+        echo ", Season: ";
+        $season_id_exits = $ydb->new("uint8_t");
+        $season_id = $ydb->YdbParseUint64(
+            $ydb->YdbColumnParser($parser, "season_id"), FFI::addr($season_id_exits));
+        echo $season_id;
+
+        echo ", Title: ";
+        $title = $ydb->YdbParseUtf8($ydb->YdbColumnParser($parser, "title"));
+        if ($title) {
+            echo FFI::string($title);
+        } else {
+            echo "(NULL)";
+        }
+        $ydb->free($title);
+
+        $air_date_exists = $ydb->new("uint8_t");
+        $air_date = $ydb->YdbInstantFromDays($ydb->YdbParseUint64(
+            $ydb->YdbColumnParser($parser, "air_date"), FFI::addr($air_date_exists)));
+
+        $formatted_date = $ydb->YdbFormatLocalTime($air_date, "%a %b %d, %Y");
+        echo ", Air date:,", FFI::string($formatted_date), "\n";
+        $ydb->free($formatted_date);
+    }
+    $ydb->YdbDestroyResultSet($result_set);
+    $ydb->YdbDestroyResultSetParser($parser);
+
+    if (!UnwrapStatus($ydb->YdbRetryQuerySyncNoSession($client, Closure::fromCallable('ExplicitTcl'), NULL))) {
+        return false;
+    }
+
+    echo "> StreamQuery:\n";
+    if (!UnwrapStatus(
+            $ydb->YdbRetryQuerySyncNoSession($client, Closure::fromCallable('StreamQuerySelect'), NULL))) {
+        return false;
+    }
 
     if (!(UnwrapStatus($ydb->YdbRetryQuerySync($client, Closure::fromCallable('DropSeries'), NULL)) &&
           UnwrapStatus($ydb->YdbRetryQuerySync($client, Closure::fromCallable('DropSeasons'), NULL)) &&
