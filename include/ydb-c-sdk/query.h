@@ -40,7 +40,7 @@ void YdbDestroyTransaction(YdbTransaction transaction);
 
 #define NULL_TRANSACTION (YdbTransaction){NULL};
 
-YDB_C_SDK_OPAQUE_STRUCT(YdbTx);
+YDB_C_SDK_OPAQUE_STRUCT(YdbTx)
 
 YdbTx YdbNoTx();
 YdbTx YdbTransactionTx(YdbTransaction transaction, bool commit);
