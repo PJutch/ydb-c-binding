@@ -65,28 +65,6 @@ YdbAsyncQueryResult YdbExecuteQuery(YdbSession session, char* query, YdbTx tx,
 
 YdbTransaction YdbQueryTransaction(YdbQueryResult result);
 
-typedef YdbStatus (*YdbSyncRetryable)(YdbSession session, void* data);
-
-YdbStatus YdbRetryQuerySync(YdbQueryClient client, YdbSyncRetryable query,
-                            void* data);
-
-typedef YdbStatus (*YdbSyncRetryableNoSession)(YdbQueryClient client,
-                                               void* data);
-
-YdbStatus YdbRetryQuerySyncNoSession(YdbQueryClient client,
-                                     YdbSyncRetryableNoSession query,
-                                     void* data);
-
-typedef YdbAsyncStatus (*YdbRetryable)(YdbSession session, void* data);
-
-YdbAsyncStatus YdbRetryQuery(YdbQueryClient client, YdbRetryable query,
-                             void* data);
-
-typedef YdbStatus (*YdbRetryableNoSession)(YdbQueryClient client, void* data);
-
-YdbAsyncStatus YdbRetryQueryNoSession(YdbQueryClient client,
-                                      YdbRetryableNoSession query, void* data);
-
 #ifdef __cplusplus
 }
 #endif

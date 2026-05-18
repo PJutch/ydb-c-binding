@@ -6,7 +6,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED On)
 
 add_library(ydb-c-sdk SHARED)
-target_sources(ydb-c-sdk PRIVATE src/driver.cpp src/query.cpp src/params.cpp src/datetime.cpp src/results.cpp src/stream.cpp)
+target_sources(ydb-c-sdk PRIVATE 
+    src/driver.cpp src/query.cpp src/params.cpp src/datetime.cpp src/results.cpp src/stream.cpp src/retry.cpp)
 target_include_directories(ydb-c-sdk 
     PUBLIC 
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
