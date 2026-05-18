@@ -3,6 +3,7 @@
 try {
     $ydb = FFI::load("build/ydb-c-sdk.i");
 } catch (FFI\Exception $e) {
+    echo $e;
     echo "Generate ffi data using\n$ mkdir build; cd build; cmake ..\n";
     exit(1);
 }
@@ -22,8 +23,11 @@ function CreateSeries($session, $data) {
         );
     END;
 
-    return $ydb->YdbQueryResultToStatus($ydb->YdbGetSyncQueryResult(
-        $ydb->YdbExecuteQuery($session, $query, NULL, $ydb->new('YdbParams'))));
+    $tx = $ydb->YdbNoTx();
+    $status = $ydb->YdbQueryResultToStatus($ydb->YdbGetSyncQueryResult(
+        $ydb->YdbExecuteQuery($session, $query, $tx, $ydb->new('YdbParams'))));
+    $ydb->YdbDestroyTx($tx);
+    return $status;
 }
 
 function CreateSeasons($session, $data) {
@@ -40,8 +44,11 @@ function CreateSeasons($session, $data) {
         );
     END;
 
-    return $ydb->YdbQueryResultToStatus($ydb->YdbGetSyncQueryResult(
-        $ydb->YdbExecuteQuery($session, $query, NULL, $ydb->new('YdbParams'))));
+    $tx = $ydb->YdbNoTx();
+    $status = $ydb->YdbQueryResultToStatus($ydb->YdbGetSyncQueryResult(
+        $ydb->YdbExecuteQuery($session, $query, $tx, $ydb->new('YdbParams'))));
+    $ydb->YdbDestroyTx($tx);
+    return $status;
 }
 
 function CreateEpisodes($session, $data) {
@@ -58,32 +65,47 @@ function CreateEpisodes($session, $data) {
         );
     END;
 
-    return $ydb->YdbQueryResultToStatus($ydb->YdbGetSyncQueryResult(
-        $ydb->YdbExecuteQuery($session, $query, NULL, $ydb->new('YdbParams'))));
+    $tx = $ydb->YdbNoTx();
+    $status = $ydb->YdbQueryResultToStatus($ydb->YdbGetSyncQueryResult(
+        $ydb->YdbExecuteQuery($session, $query, $tx, $ydb->new('YdbParams'))));
+    $ydb->YdbDestroyTx($tx);
+    return $status;
 }
 
 function DropSeries($session, $data) {
     global $ydb;
 
     $query = "DROP TABLE series";
-    return $ydb->YdbQueryResultToStatus($ydb->YdbGetSyncQueryResult(
-        $ydb->YdbExecuteQuery($session, $query, NULL, $ydb->new('YdbParams'))));
+
+    $tx = $ydb->YdbNoTx();
+    $status = $ydb->YdbQueryResultToStatus($ydb->YdbGetSyncQueryResult(
+        $ydb->YdbExecuteQuery($session, $query, $tx, $ydb->new('YdbParams'))));
+    $ydb->YdbDestroyTx($tx);
+    return $status;
 }
 
 function DropSeasons($session, $data) {
     global $ydb;
 
     $query = "DROP TABLE seasons";
-    return $ydb->YdbQueryResultToStatus($ydb->YdbGetSyncQueryResult(
-        $ydb->YdbExecuteQuery($session, $query, NULL, $ydb->new('YdbParams'))));
+    
+    $tx = $ydb->YdbNoTx();
+    $status = $ydb->YdbQueryResultToStatus($ydb->YdbGetSyncQueryResult(
+        $ydb->YdbExecuteQuery($session, $query, $tx, $ydb->new('YdbParams'))));
+    $ydb->YdbDestroyTx($tx);
+    return $status;
 }
 
 function DropEpisodes($session, $data) {
     global $ydb;
 
     $query = "DROP TABLE episodes";
-    return $ydb->YdbQueryResultToStatus($ydb->YdbGetSyncQueryResult(
-        $ydb->YdbExecuteQuery($session, $query, NULL, $ydb->new('YdbParams'))));
+    
+    $tx = $ydb->YdbNoTx();
+    $status = $ydb->YdbQueryResultToStatus($ydb->YdbGetSyncQueryResult(
+        $ydb->YdbExecuteQuery($session, $query, $tx, $ydb->new('YdbParams'))));
+    $ydb->YdbDestroyTx($tx);
+    return $status;
 }
 
 function FillData($session, $data) {
@@ -139,10 +161,10 @@ function FillData($session, $data) {
 
     $params = CreateParams();
 
-    $tx = $ydb->new("YdbTx");
-    $tx->mode = $ydb->YDB_TX_SERIALIZABLE_RW;
-    $tx->commit = true;
-    $status = $ydb->YdbQueryResultToStatus($ydb->YdbGetSyncQueryResult($ydb->YdbExecuteQuery($session, $query, FFI::addr($tx), $params)));
+    $tx = $ydb->YdbBeginTx($ydb->YDB_TX_SERIALIZABLE_RW, true, false);
+    $status = $ydb->YdbQueryResultToStatus($ydb->YdbGetSyncQueryResult(
+        $ydb->YdbExecuteQuery($session, $query, $tx, $params)));
+    $ydb->YdbDestroyTx($tx);
 
     $ydb->YdbDestroyParams($params);
 
@@ -160,10 +182,10 @@ function SelectSimple($session, $data) {
         WHERE series_id = 1;
     END;
 
-    $tx = $ydb->new("YdbTx");
-    $tx->mode = $ydb->YDB_TX_SERIALIZABLE_RW;
-    $tx->commit = true;
-    $result = $ydb->YdbGetSyncQueryResult($ydb->YdbExecuteQuery($session, $query, FFI::addr($tx), $ydb->new("YdbParams")));
+    $tx = $ydb->YdbBeginTx($ydb->YDB_TX_SERIALIZABLE_RW, true, false);
+    $result = $ydb->YdbGetSyncQueryResult(
+        $ydb->YdbExecuteQuery($session, $query, $tx, $ydb->new("YdbParams")));
+    $ydb->YdbDestroyTx($tx);
 
     $status = $ydb->YdbQueryResultGetStatus($result);
     if ($ydb->YdbIsSuccess($status)) {
@@ -180,11 +202,9 @@ function UpsertSimple($session, $data) {
         UPSERT INTO episodes (series_id, season_id, episode_id, title) VALUES (2, 6, 1, "TBD");
     END;
 
-    $tx = $ydb->new("YdbTx");
-    $tx->mode = $ydb->YDB_TX_SERIALIZABLE_RW;
-    $tx->commit = true;
+    $tx = $ydb->YdbBeginTx($ydb->YDB_TX_SERIALIZABLE_RW, true, false);
     return $ydb->YdbQueryResultToStatus($ydb->YdbGetSyncQueryResult(
-        $ydb->YdbExecuteQuery($session, $query, NULL, $ydb->new('YdbParams'))));
+        $ydb->YdbExecuteQuery($session, $query, $tx, $ydb->new('YdbParams'))));
 }
 
 function SelectWithParams($session, $data) {
@@ -215,11 +235,10 @@ function SelectWithParams($session, $data) {
     $ydb->YdbBuildParamValue($season_id_param);
     $params = $ydb->YdbBuildParams($params_builder);
 
-    $tx = $ydb->new("YdbTx");
-    $tx->mode = $ydb->YDB_TX_SERIALIZABLE_RW;
-    $tx->commit = true;
+    $tx = $ydb->YdbBeginTx($ydb->YDB_TX_SERIALIZABLE_RW, true, false);
     $result = $ydb->YdbGetSyncQueryResult(
-        $ydb->YdbExecuteQuery($session, $query, FFI::addr($tx), $params));
+        $ydb->YdbExecuteQuery($session, $query, $tx, $params));
+    $ydb->YdbDestroyTx($tx);
 
     $status = $ydb->YdbQueryResultGetStatus($result);
     if ($ydb->YdbIsSuccess($status)) {
@@ -257,10 +276,10 @@ function MultiStep($session, $data) {
     // Execute the first query to retrieve the required values for the client.
     // Transaction control settings do not set the CommitTx flag, allowing the
     // transaction to remain active after query execution.
-    $tx1 = $ydb->new("YdbTx");
-    $tx1->mode = $ydb->YDB_TX_SERIALIZABLE_RW;
+    $tx1 = $ydb->YdbBeginTx($ydb->YDB_TX_SERIALIZABLE_RW, false, false);
     $result1 =
-        $ydb->YdbGetSyncQueryResult($ydb->YdbExecuteQuery($session, $query1, FFI::addr($tx1), $params1));
+        $ydb->YdbGetSyncQueryResult($ydb->YdbExecuteQuery($session, $query1, $tx1, $params1));
+    $ydb->YdbDestroyTx($tx1);
 
     $status1 = $ydb->YdbQueryResultGetStatus($result1);
     if (!$ydb->YdbIsSuccess($status1)) {
@@ -315,13 +334,12 @@ function MultiStep($session, $data) {
     // Execute the second query.
     // The transaction control settings continue the active transaction (tx)
     // and commit it at the end of the second query execution.
-    $tx2 = $ydb->new("YdbTx");
-    $tx2->mode = $ydb->YDB_TX_TRANSACTION;
-    $tx2->transaction = $transaction;
-    $tx2->commit = true;
+    $tx2 = $ydb->YdbTransactionTx($transaction, true);
 
     $result2 =
-        $ydb->YdbGetSyncQueryResult($ydb->YdbExecuteQuery($session, $query2, FFI::addr($tx2), $params2));
+        $ydb->YdbGetSyncQueryResult($ydb->YdbExecuteQuery($session, $query2, $tx2, $params2));
+
+    $ydb->YdbDestroyTx($tx2);
 
     $status = $ydb->YdbQueryResultGetStatus($result2);
     if ($ydb->YdbIsSuccess($status)) {
@@ -381,10 +399,10 @@ function ExplicitTcl($client, $data) {
     $ydb->YdbBuildParamValue($air_date_param);
     $params = $ydb->YdbBuildParams($params_builder);
 
-    $tx = $ydb->new("YdbTx");
-    $tx->transaction = $transaction;
+    $tx = $ydb->YdbTransactionTx($transaction, true);
     $update_result =
-        $ydb->YdbGetSyncQueryResult($ydb->YdbExecuteQuery($session, $query, FFI::addr($tx), $params));
+        $ydb->YdbGetSyncQueryResult($ydb->YdbExecuteQuery($session, $query, $tx, $params));
+    $ydb->YdbDestroyTx($tx);
 
     $status1 = $ydb->YdbQueryResultGetStatus($update_result);
     if (!$ydb->YdbIsSuccess($status1)) {
@@ -432,8 +450,10 @@ function StreamQuerySelect($client, $data) {
     $ydb->YdbBuildParamValue($list_param);
     $params = $ydb->YdbBuildParams($params_builder);
 
+    $tx = $ydb->YdbNoTx();
     $resultStreamQuery = $ydb->YdbGetSyncExecuteQueryIterator(
-        $ydb->YdbStreamExecuteQuery($client, $query, NULL, $params));
+        $ydb->YdbStreamExecuteQuery($client, $query, $tx, $params));
+    $ydb->YdbDestroyTx($tx);
 
     $status = $ydb->YdbExecuteQueryIteratorGetStatus($resultStreamQuery);
     if (!$ydb->YdbIsSuccess($status)) {
@@ -544,21 +564,98 @@ function UnwrapStatus($status) {
     return true;
 }
 
+function RetryQuerySync($client, $retriable,
+                         $data) {
+    global $ydb;
+
+    $retrier = $ydb->YdbCreateRetrier();
+
+    $session = $ydb->new("YdbSession");
+    while (true) {
+        if ($session->data == NULL) {
+            $session_result =
+                $ydb->YdbGetSyncCreateSessionResult($ydb->YdbCreateSession($client));
+
+            $session_status =
+                $ydb->YdbCreateSessionResultGetStatus($session_result);
+            if (!$ydb->YdbIsSuccess($session_status)) {
+                $ydb->YdbDestroyCreateSessionResult($session_result);
+                return $session_status;
+            }
+            $ydb->YdbDestroyStatus($session_status);
+
+            $session = $ydb->YdbCreateSessionResultGetSession($session_result);
+            $ydb->YdbDestroyCreateSessionResult($session_result);
+        }
+
+        $status = $retriable($session, $data);
+
+        $next_step = $ydb->YdbRetrierNext($retrier, $status);
+        switch ($next_step) {
+        case $ydb->YDB_RETRY_RETRY:
+            break;
+        case $ydb->YDB_RETRY_RESET:
+            $ydb->YdbDestroySession($session);
+            $session->data = NULL;
+            break;
+        case $ydb->YDB_RETRY_FINISH:
+            return $status;
+        }
+    }
+}
+
+function RetryQuerySyncNoSession($client, $retriable, $data) {
+    global $ydb;
+
+    $retrier = $ydb->YdbCreateRetrier();
+
+    $session_result =
+        $ydb->YdbGetSyncCreateSessionResult($ydb->YdbCreateSession($client));
+
+    $status = $ydb->YdbCreateSessionResultGetStatus($session_result);
+    if (!$ydb->YdbIsSuccess($status)) {
+        $ydb->YdbDestroyStatus($status);
+        $ydb->YdbDestroyCreateSessionResult($session_result);
+        return $status;
+    }
+    $ydb->YdbDestroyStatus($status);
+
+    $session = $ydb->YdbCreateSessionResultGetSession($session_result);
+    $ydb->YdbDestroyCreateSessionResult($session_result);
+
+    while (true) {
+        $status = $retriable($client, $data);
+        
+        $next_step = $ydb->YdbRetrierNext($retrier, $status);
+        switch ($next_step) {
+        case $ydb->YDB_RETRY_RETRY:
+            break;
+        case $ydb->YDB_RETRY_RESET:
+            $ydb->YdbDestroySession($session);
+            $session->data = NULL;
+            break;
+        case $ydb->YDB_RETRY_FINISH:
+            return $status;
+        }
+    }
+    return $status;
+}
+
 function Run($client) {
     global $ydb; 
 
-    if (!(UnwrapStatus($ydb->YdbRetryQuerySync($client, Closure::fromCallable('CreateSeries'), NULL)) &&
-          UnwrapStatus($ydb->YdbRetryQuerySync($client, Closure::fromCallable('CreateSeasons'), NULL)) &&
-          UnwrapStatus($ydb->YdbRetryQuerySync($client, Closure::fromCallable('CreateEpisodes'), NULL)))) {
+    if (!(UnwrapStatus(RetryQuerySync($client, Closure::fromCallable('CreateSeries'), NULL)) &&
+          UnwrapStatus(RetryQuerySync($client, Closure::fromCallable('CreateSeasons'), NULL)) &&
+          UnwrapStatus(RetryQuerySync($client, Closure::fromCallable('CreateEpisodes'), NULL)))) {
         return false;
     }
 
-    if (!UnwrapStatus($ydb->YdbRetryQuerySync($client, Closure::fromCallable('FillData'), NULL))) {
+    if (!UnwrapStatus(RetryQuerySync($client, Closure::fromCallable('FillData'), NULL))) {
         return false;
     }
 
     $result_set = $ydb->new("YdbResultSet");
-    if (!UnwrapStatus($ydb->YdbRetryQuerySync($client, Closure::fromCallable('SelectSimple'), FFI::addr($result_set)))) {
+    if (!UnwrapStatus(RetryQuerySync($client, Closure::fromCallable('SelectSimple'), FFI::addr($result_set)))) {
         return false;
     }
 
@@ -598,11 +695,11 @@ function Run($client) {
     $ydb->YdbDestroyResultSet($result_set);
     $ydb->YdbDestroyResultSetParser($parser);
 
-    if (!UnwrapStatus($ydb->YdbRetryQuerySync($client, Closure::fromCallable('UpsertSimple'), NULL))) {
+    if (!UnwrapStatus(RetryQuerySync($client, Closure::fromCallable('UpsertSimple'), NULL))) {
         return false;
     }
 
-    if (!UnwrapStatus($ydb->YdbRetryQuerySync($client, Closure::fromCallable('SelectWithParams'), FFI::addr($result_set)))) {
+    if (!UnwrapStatus(RetryQuerySync($client, Closure::fromCallable('SelectWithParams'), FFI::addr($result_set)))) {
         return false;
     }
 
@@ -633,7 +730,7 @@ function Run($client) {
     $ydb->YdbDestroyResultSet($result_set);
     $ydb->YdbDestroyResultSetParser($parser);
 
-    if (!UnwrapStatus($ydb->YdbRetryQuerySync($client, Closure::fromCallable('MultiStep'), FFI::addr($result_set)))) {
+    if (!UnwrapStatus(RetryQuerySync($client, Closure::fromCallable('MultiStep'), FFI::addr($result_set)))) {
         return false;
     }
 
@@ -672,19 +769,19 @@ function Run($client) {
     $ydb->YdbDestroyResultSet($result_set);
     $ydb->YdbDestroyResultSetParser($parser);
 
-    if (!UnwrapStatus($ydb->YdbRetryQuerySyncNoSession($client, Closure::fromCallable('ExplicitTcl'), NULL))) {
+    if (!UnwrapStatus(RetryQuerySyncNoSession($client, Closure::fromCallable('ExplicitTcl'), NULL))) {
         return false;
     }
 
     echo "> StreamQuery:\n";
     if (!UnwrapStatus(
-            $ydb->YdbRetryQuerySyncNoSession($client, Closure::fromCallable('StreamQuerySelect'), NULL))) {
+            RetryQuerySyncNoSession($client, Closure::fromCallable('StreamQuerySelect'), NULL))) {
         return false;
     }
 
-    if (!(UnwrapStatus($ydb->YdbRetryQuerySync($client, Closure::fromCallable('DropSeries'), NULL)) &&
-          UnwrapStatus($ydb->YdbRetryQuerySync($client, Closure::fromCallable('DropSeasons'), NULL)) &&
-          UnwrapStatus($ydb->YdbRetryQuerySync($client, Closure::fromCallable('DropEpisodes'), NULL)))) {
+    if (!(UnwrapStatus(RetryQuerySync($client, Closure::fromCallable('DropSeries'), NULL)) &&
+          UnwrapStatus(RetryQuerySync($client, Closure::fromCallable('DropSeasons'), NULL)) &&
+          UnwrapStatus(RetryQuerySync($client, Closure::fromCallable('DropEpisodes'), NULL)))) {
         return false;
     }
 

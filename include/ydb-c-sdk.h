@@ -7,5 +7,6 @@
 #include "ydb-c-sdk/query.h"
 #include "ydb-c-sdk/results.h"
 #include "ydb-c-sdk/stream.h"
+#include "ydb-c-sdk/retry.h"
 
 #endif

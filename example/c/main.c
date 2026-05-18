@@ -514,19 +514,98 @@ bool UnwrapStatus(YdbStatus status) {
     return true;
 }
 
+typedef YdbStatus (*SyncRetryable)(YdbSession session, void* data);
+
+YdbStatus RetryQuerySync(YdbQueryClient client, SyncRetryable retriable,
+                         void* data) {
+    YdbRetrier retrier = YdbCreateRetrier();
+
+    YdbSession session = {};
+    while (true) {
+        if (session.data == NULL) {
+            YdbCreateSessionResult session_result =
+                YdbGetSyncCreateSessionResult(YdbCreateSession(client));
+
+            YdbStatus session_status =
+                YdbCreateSessionResultGetStatus(session_result);
+            if (!YdbIsSuccess(session_status)) {
+                YdbDestroyCreateSessionResult(session_result);
+                return session_status;
+            }
+            YdbDestroyStatus(session_status);
+
+            session = YdbCreateSessionResultGetSession(session_result);
+            YdbDestroyCreateSessionResult(session_result);
+        }
+
+        YdbStatus status = retriable(session, data);
+
+        YdbRetryNextStep next_step = YdbRetrierNext(retrier, status);
+        switch (next_step) {
+        case YDB_RETRY_RETRY:
+            break;
+        case YDB_RETRY_RESET:
+            YdbDestroySession(session);
+            session.data = NULL;
+            break;
+        case YDB_RETRY_FINISH:
+            return status;
+        }
+    }
+}
+
+typedef YdbStatus (*SyncNoSessionRetryable)(YdbQueryClient client, void* data);
+
+YdbStatus RetryQuerySyncNoSession(YdbQueryClient client,
+                                  SyncNoSessionRetryable retriable,
+                                  void* data) {
+    YdbRetrier retrier = YdbCreateRetrier();
+
+    YdbCreateSessionResult session_result =
+        YdbGetSyncCreateSessionResult(YdbCreateSession(client));
+
+    YdbStatus status = YdbCreateSessionResultGetStatus(session_result);
+    if (!YdbIsSuccess(status)) {
+        YdbDestroyStatus(status);
+        YdbDestroyCreateSessionResult(session_result);
+        return status;
+    }
+    YdbDestroyStatus(status);
+
+    YdbSession session = YdbCreateSessionResultGetSession(session_result);
+    YdbDestroyCreateSessionResult(session_result);
+
+    while (true) {
+        status = retriable(client, data);
+        
+        YdbRetryNextStep next_step = YdbRetrierNext(retrier, status);
+        switch (next_step) {
+        case YDB_RETRY_RETRY:
+            break;
+        case YDB_RETRY_RESET:
+            YdbDestroySession(session);
+            session.data = NULL;
+            break;
+        case YDB_RETRY_FINISH:
+            return status;
+        }
+    }
+    return status;
+}
+
 bool Run(YdbQueryClient client) {
-    if (!(UnwrapStatus(YdbRetryQuerySync(client, &CreateSeries, NULL)) &&
-          UnwrapStatus(YdbRetryQuerySync(client, &CreateSeasons, NULL)) &&
-          UnwrapStatus(YdbRetryQuerySync(client, &CreateEpisodes, NULL)))) {
+    if (!(UnwrapStatus(RetryQuerySync(client, &CreateSeries, NULL)) &&
+          UnwrapStatus(RetryQuerySync(client, &CreateSeasons, NULL)) &&
+          UnwrapStatus(RetryQuerySync(client, &CreateEpisodes, NULL)))) {
         return false;
     }
 
-    if (!UnwrapStatus(YdbRetryQuerySync(client, &FillData, NULL))) {
+    if (!UnwrapStatus(RetryQuerySync(client, &FillData, NULL))) {
         return false;
     }
 
     YdbResultSet result_set = {NULL};
-    if (!UnwrapStatus(YdbRetryQuerySync(client, &SelectSimple, &result_set))) {
+    if (!UnwrapStatus(RetryQuerySync(client, &SelectSimple, &result_set))) {
         return false;
     }
 
@@ -570,12 +649,11 @@ bool Run(YdbQueryClient client) {
     YdbDestroyResultSet(result_set);
     YdbDestroyResultSetParser(parser);
 
-    if (!UnwrapStatus(YdbRetryQuerySync(client, &UpsertSimple, NULL))) {
+    if (!UnwrapStatus(RetryQuerySync(client, &UpsertSimple, NULL))) {
         return false;
     }
 
-    if (!UnwrapStatus(
-            YdbRetryQuerySync(client, &SelectWithParams, &result_set))) {
+    if (!UnwrapStatus(RetryQuerySync(client, &SelectWithParams, &result_set))) {
         return false;
     }
 
@@ -607,7 +685,7 @@ bool Run(YdbQueryClient client) {
     YdbDestroyResultSet(result_set);
     YdbDestroyResultSetParser(parser);
 
-    if (!UnwrapStatus(YdbRetryQuerySync(client, &MultiStep, &result_set))) {
+    if (!UnwrapStatus(RetryQuerySync(client, &MultiStep, &result_set))) {
         return false;
     }
 
@@ -646,19 +724,19 @@ bool Run(YdbQueryClient client) {
     YdbDestroyResultSet(result_set);
     YdbDestroyResultSetParser(parser);
 
-    if (!UnwrapStatus(YdbRetryQuerySyncNoSession(client, &ExplicitTcl, NULL))) {
+    if (!UnwrapStatus(RetryQuerySyncNoSession(client, &ExplicitTcl, NULL))) {
         return false;
     }
 
     printf("> StreamQuery:\n");
     if (!UnwrapStatus(
-            YdbRetryQuerySyncNoSession(client, &StreamQuerySelect, NULL))) {
+            RetryQuerySyncNoSession(client, &StreamQuerySelect, NULL))) {
         return false;
     }
 
-    if (!(UnwrapStatus(YdbRetryQuerySync(client, &DropSeries, NULL)) &&
-          UnwrapStatus(YdbRetryQuerySync(client, &DropSeasons, NULL)) &&
-          UnwrapStatus(YdbRetryQuerySync(client, &DropEpisodes, NULL)))) {
+    if (!(UnwrapStatus(RetryQuerySync(client, &DropSeries, NULL)) &&
+          UnwrapStatus(RetryQuerySync(client, &DropSeasons, NULL)) &&
+          UnwrapStatus(RetryQuerySync(client, &DropEpisodes, NULL)))) {
         return false;
     }
 
