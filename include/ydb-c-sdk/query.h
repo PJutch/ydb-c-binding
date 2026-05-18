@@ -32,7 +32,6 @@ typedef enum YdbTxMode {
     YDB_TX_STALE_RO,
     YDB_TX_SNAPSHOT_RO,
     YDB_TX_SNAPSHOT_RW,
-    YDB_TX_TRANSACTION,
 } YdbTxMode;
 
 YDB_C_SDK_OPAQUE_STRUCT(YdbTransaction)
@@ -41,12 +40,12 @@ void YdbDestroyTransaction(YdbTransaction transaction);
 
 #define NULL_TRANSACTION (YdbTransaction){NULL};
 
-typedef struct YdbTx {
-    YdbTxMode mode;
-    bool commit;
-    bool allow_inconsistent_reads;
-    YdbTransaction transaction;
-} YdbTx;
+YDB_C_SDK_OPAQUE_STRUCT(YdbTx);
+
+YdbTx YdbNoTx();
+YdbTx YdbTransactionTx(YdbTransaction transaction, bool commit);
+YdbTx YdbBeginTx(YdbTxMode mode, bool commit, bool allow_inconsistent_reads);
+void YdbDestroyTx(YdbTx tx);
 
 YDB_C_SDK_RESULT(BeginTransactionResult)
 
@@ -61,7 +60,7 @@ YDB_C_SDK_RESULT(CommitResult)
 
 YdbAsyncCommitResult YdbCommit(YdbTransaction transaction);
 
-YdbAsyncQueryResult YdbExecuteQuery(YdbSession session, char* query, YdbTx* tx,
+YdbAsyncQueryResult YdbExecuteQuery(YdbSession session, char* query, YdbTx tx,
                                     YdbParams params);
 
 YdbTransaction YdbQueryTransaction(YdbQueryResult result);

@@ -13,7 +13,7 @@ extern "C" {
 YDB_C_SDK_RESULT(ExecuteQueryIterator)
 
 YdbAsyncExecuteQueryIterator YdbStreamExecuteQuery(YdbQueryClient client,
-                                                  char* query, YdbTx* tx,
+                                                  char* query, YdbTx tx,
                                                   YdbParams params);
 
 
