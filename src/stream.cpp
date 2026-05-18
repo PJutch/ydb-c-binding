@@ -13,13 +13,13 @@ YDB_C_SDK_RESULT_IMPL(ExecuteQueryIterator, NYdb::NQuery::TExecuteQueryIterator,
                       NYdb::NQuery::TAsyncExecuteQueryIterator)
 
 YdbAsyncExecuteQueryIterator YdbStreamExecuteQuery(YdbQueryClient client_,
-                                                       char* query, YdbTx* tx,
-                                                       YdbParams params_) {
+                                                   char* query, YdbTx tx_,
+                                                   YdbParams params_) {
     auto& client = YdbFromOpaque<NYdb::NQuery::TQueryClient>(client_);
     auto* params = YdbPtrFromOpaque<NYdb::TParams>(params_);
-    auto future =
-        params ? client.StreamExecuteQuery(query, YdbCreateTx(tx), *params)
-               : client.StreamExecuteQuery(query, YdbCreateTx(tx));
+    auto& tx = YdbFromOpaque<NYdb::NQuery::TTxControl>(tx_);
+    auto future = params ? client.StreamExecuteQuery(query, tx, *params)
+                         : client.StreamExecuteQuery(query, tx);
     return TO_NEW_OPAQUE(NYdb::NQuery::TAsyncExecuteQueryIterator, future);
 }
 

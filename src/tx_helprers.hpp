@@ -9,6 +9,4 @@
 NYdb::NQuery::TTxSettings YdbCreateTxSettings(YdbTxMode mode,
                                               bool allow_inconsistent_reads);
 
-NYdb::NQuery::TTxControl YdbCreateTx(YdbTx* tx_);
-
 #endif
