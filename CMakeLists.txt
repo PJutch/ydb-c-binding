@@ -19,13 +19,8 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     target_link_libraries(ydb-c-sdk PRIVATE c++)
 endif()
 
-set(YDB_DEPS_PATH "$ENV{HOME}/ydb_deps" CACHE STRING 
-"Path to where built from source YDB dependencies are installed")
-list(APPEND CMAKE_PREFIX_PATH 
-    ${YDB_DEPS_PATH}/protobuf ${YDB_DEPS_PATH}/absl ${YDB_DEPS_PATH}/ydb_cpp_sdk ${YDB_DEPS_PATH}/grpc ${YDB_DEPS_PATH}/jwt-cpp)
-
-find_package(Protobuf REQUIRED)
-find_package(gRPC REQUIRED)
+# find_package(Protobuf REQUIRED)
+# find_package(gRPC REQUIRED)
 find_package(YDB-CPP-SDK REQUIRED)
 
 target_link_libraries(ydb-c-sdk PRIVATE

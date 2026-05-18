@@ -10,15 +10,15 @@
 3. ```bash
    mkdir build
    cd build
-   cmake .. -DYDB_DEPS_PATH=~/ydb_deps
+   cmake .. -DCMAKE_PREFIX_PATH="~/ydb_deps/protobuf;~/ydb_deps/absl;~/ydb_deps/ydb_cpp_sdk;~/ydb_deps/grpc;~/ydb_deps/jwt-cpp"
    cmake --build .
-   cmake --install . 
+   cmake --install . --prefix ~/ydb_deps/ydb-c-sdk
    ```
 4. ```bash
    cd ../example/c
    mkdir build
    cd build
-   cmake ..
+   cmake .. -DCMAKE_PREFIX_PATH=~/ydb_deps/ydb-c-sdk 
    cmake --build .
    ./example
    ```
