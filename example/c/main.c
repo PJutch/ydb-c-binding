@@ -514,22 +514,6 @@ bool UnwrapStatus(YdbStatus status) {
     return true;
 }
 
-void DoBackoff(bool fast, uint32_t retry_number) {
-    uint32_t backoff_slots = 1 << retry_number;
-    if (backoff_slots > (1 << 6)) {
-        backoff_slots = (1 << 6);
-    }
-
-    YdbDuration max_duration = YdbDurationFromSeconds(1) * backoff_slots;
-
-    double uncertainty_ratio = 0.5;
-    double uncertainty_multiplier =
-        ((double)rand()) / RAND_MAX * uncertainty_ratio - uncertainty_ratio +
-        1.0;
-
-    usleep(max_duration * uncertainty_multiplier);
-}
-
 typedef YdbStatus (*SyncRetryable)(YdbSession session, void* data);
 
 YdbStatus RetryQuerySync(YdbQueryClient client, SyncRetryable retriable,
@@ -558,24 +542,14 @@ YdbStatus RetryQuerySync(YdbQueryClient client, SyncRetryable retriable,
 
         YdbRetryNextStep next_step = YdbRetrierNext(retrier, status);
         switch (next_step) {
-        case YDB_RETRY_IMMEDIATELY:
-        case YDB_RETRY_IMMEDIATELY_RESET:
+        case YDB_RETRY_RETRY:
             break;
-        case YDB_RETRY_FASTBACKOFF:
-        case YDB_RETRY_FASTBACKOFF_RESET:
-            DoBackoff(true, YdbGetRetryNumber(retrier));
-            break;
-        case YDB_RETRY_SLOWBACKOFF:
-            DoBackoff(false, YdbGetRetryNumber(retrier));
+        case YDB_RETRY_RESET:
+            YdbDestroySession(session);
+            session.data = NULL;
             break;
         case YDB_RETRY_FINISH:
             return status;
-        }
-
-        if (next_step == YDB_RETRY_IMMEDIATELY_RESET ||
-            next_step == YDB_RETRY_FASTBACKOFF_RESET) {
-            YdbDestroySession(session);
-            session.data = NULL;
         }
     }
 }
@@ -601,23 +575,20 @@ YdbStatus RetryQuerySyncNoSession(YdbQueryClient client,
     YdbSession session = YdbCreateSessionResultGetSession(session_result);
     YdbDestroyCreateSessionResult(session_result);
 
-    status = retriable(client, data);
     while (true) {
+        status = retriable(client, data);
+        
         YdbRetryNextStep next_step = YdbRetrierNext(retrier, status);
         switch (next_step) {
-        case YDB_RETRY_IMMEDIATELY:
+        case YDB_RETRY_RETRY:
             break;
-        case YDB_RETRY_FASTBACKOFF:
-            DoBackoff(true, YdbGetRetryNumber(retrier));
-            break;
-        case YDB_RETRY_SLOWBACKOFF:
-            DoBackoff(false, YdbGetRetryNumber(retrier));
+        case YDB_RETRY_RESET:
+            YdbDestroySession(session);
+            session.data = NULL;
             break;
         case YDB_RETRY_FINISH:
             return status;
         }
-
-        status = retriable(client, data);
     }
     return status;
 }
