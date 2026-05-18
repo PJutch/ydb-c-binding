@@ -17,6 +17,12 @@ YdbStatus YdbStatusOk() {
                                                       NYdb::NIssue::TIssues()));
 }
 
+YdbStatus YdbStatusError() {
+    return TO_NEW_OPAQUE(
+        NYdb::TStatus,
+        NYdb::TStatus(NYdb::EStatus::GENERIC_ERROR, NYdb::NIssue::TIssues()));
+}
+
 void YdbDestroyStatus(YdbStatus status) {
     delete YdbPtrFromOpaque<NYdb::TStatus>(status);
 }
@@ -83,42 +89,103 @@ YdbValueParser YdbColumnParser(YdbResultSetParser result_set_parser,
                  .ColumnParser(column_name)};
 }
 
-uint64_t YdbParseUint64(YdbValueParser parser_, bool* exists) {
-    auto& parser = YdbFromOpaque<NYdb::TValueParser>(parser_);
-    if (exists != nullptr) {
-        if (auto result = parser.GetOptionalUint64()) {
-            *exists = true;
-            return *result;
-        } else {
-            *exists = false;
-            return 0;
-        }
-    } else {
-        return parser.GetUint64();
+#define YDB_C_SDK_PARSE(suffix, result_type)                                   \
+    char* YdbParse##suffix(YdbValueParser parser, result_type* output) {       \
+        try {                                                                  \
+            *output = YdbFromOpaque<NYdb::TValueParser>(parser).Get##suffix(); \
+            return nullptr;                                                    \
+        } catch (std::exception& exception) {                                   \
+            return strdup(exception.what());                                   \
+        }                                                                      \
+    }                                                                          \
+                                                                               \
+    char* YdbParseOptional##suffix(YdbValueParser parser, result_type* output, \
+                                   bool* exists) {                             \
+        try {                                                                  \
+            if (auto result = YdbFromOpaque<NYdb::TValueParser>(parser)        \
+                                  .GetOptional##suffix()) {                    \
+                *output = *result;                                             \
+                *exists = true;                                                \
+            } else {                                                           \
+                *exists = false;                                               \
+            }                                                                  \
+            return nullptr;                                                    \
+        } catch (std::exception& exception) {                                   \
+            return strdup(exception.what());                                   \
+        }                                                                      \
     }
-}
 
-char* YdbParseUtf8(YdbValueParser parser) {
-    if (auto result =
-            YdbFromOpaque<NYdb::TValueParser>(parser).GetOptionalUtf8()) {
-        return strdup(result->c_str());
-    } else {
-        return nullptr;
-    }
-}
+YDB_C_SDK_PARSE(Bool, bool)
+YDB_C_SDK_PARSE(Int8, int8_t)
+YDB_C_SDK_PARSE(Uint8, uint8_t)
+YDB_C_SDK_PARSE(Int16, int16_t)
+YDB_C_SDK_PARSE(Uint16, uint16_t)
+YDB_C_SDK_PARSE(Int32, int32_t)
+YDB_C_SDK_PARSE(Uint32, uint32_t)
+YDB_C_SDK_PARSE(Int64, int64_t)
+YDB_C_SDK_PARSE(Uint64, uint64_t)
 
-YdbInstant YdbParseDate(YdbValueParser parser, bool* ok) {
-    if (auto result =
-            YdbFromOpaque<NYdb::TValueParser>(parser).GetOptionalDate()) {
-        if (ok) {
-            *ok = true;
-        }
-        return result->GetValue();
-    } else {
-        if (ok) {
-            *ok = false;
-        }
-        return YDB_INSTANT_MAX;
+#define YDB_C_SDK_PARSE_INSTANT(suffix)                                        \
+    char* YdbParse##suffix(YdbValueParser parser, YdbInstant* output) {        \
+        try {                                                                  \
+            *output = YdbFromOpaque<NYdb::TValueParser>(parser)                \
+                          .Get##suffix()                                       \
+                          .GetValue();                                         \
+            return nullptr;                                                    \
+        } catch (std::exception& exception) {                                   \
+            return strdup(exception.what());                                   \
+        }                                                                      \
+    }                                                                          \
+                                                                               \
+    char* YdbParseOptional##suffix(YdbValueParser parser, YdbInstant* output,  \
+                                   bool* exists) {                             \
+        try {                                                                  \
+            if (auto result = YdbFromOpaque<NYdb::TValueParser>(parser)        \
+                                  .GetOptional##suffix()) {                    \
+                *output = result->GetValue();                                  \
+                *exists = true;                                                \
+            } else {                                                           \
+                *exists = false;                                               \
+            }                                                                  \
+            return nullptr;                                                    \
+        } catch (std::exception& exception) {                                   \
+            return strdup(exception.what());                                   \
+        }                                                                      \
     }
-}
+
+YDB_C_SDK_PARSE_INSTANT(Date)
+YDB_C_SDK_PARSE_INSTANT(Datetime)
+YDB_C_SDK_PARSE_INSTANT(Timestamp)
+
+#define YDB_C_SDK_PARSE_STRING(suffix)                                         \
+    char* YdbParse##suffix(YdbValueParser parser, char** output) {             \
+        try {                                                                  \
+            *output = strdup(YdbFromOpaque<NYdb::TValueParser>(parser)         \
+                                 .Get##suffix()                                \
+                                 .c_str());                                    \
+            return nullptr;                                                    \
+        } catch (std::exception& exception) {                                   \
+            return strdup(exception.what());                                   \
+        }                                                                      \
+    }                                                                          \
+                                                                               \
+    char* YdbParseOptional##suffix(YdbValueParser parser, char** output) {     \
+        try {                                                                  \
+            if (auto result = YdbFromOpaque<NYdb::TValueParser>(parser)        \
+                                  .GetOptional##suffix()) {                    \
+                *output = strdup(result->c_str());                             \
+            } else {                                                           \
+                *output = nullptr;                                             \
+            }                                                                  \
+            return nullptr;                                                    \
+        } catch (std::exception& exception) {                                   \
+            return strdup(exception.what());                                   \
+        }                                                                      \
+    }
+
+YDB_C_SDK_PARSE_STRING(Bytes)
+YDB_C_SDK_PARSE_STRING(Utf8)
+YDB_C_SDK_PARSE_STRING(Text)
+YDB_C_SDK_PARSE_STRING(Yson)
+YDB_C_SDK_PARSE_STRING(Json)
 }

@@ -261,9 +261,17 @@ YdbStatus MultiStep(YdbSession session, void* data) {
     YdbNextRow(parser);
 
     bool date_exists;
-    YdbInstant from_date = YdbInstantFromDays(
-        YdbParseUint64(YdbColumnParser(parser, "from_date"), &date_exists));
-    YdbInstant to_date = from_date + YdbDurationFromDays(15);
+    char* parse_error;
+    uint64_t from_date_days;
+    parse_error = YdbParseOptionalUint64(YdbColumnParser(parser, "from_date"),
+                                         &from_date_days, &date_exists);
+    if (parse_error != NULL) {
+        fprintf(stderr, "\nerror: %s\n", parse_error);
+        free(parse_error);
+    }
+
+    YdbInstant to_date =
+        YdbInstantFromDays(from_date_days) + YdbDurationFromDays(15);
 
     YdbDestroyResultSet(temp_result_set);
     YdbDestroyResultSetParser(parser);
@@ -285,7 +293,7 @@ YdbStatus MultiStep(YdbSession session, void* data) {
     YdbBuildParamValue(series_id_param2);
     YdbParamValueBuilder from_date_param =
         YdbAddParam(params2_builder, "$fromDate");
-    YdbParamUint64(from_date_param, YdbInstantToDays(from_date));
+    YdbParamUint64(from_date_param, from_date_days);
     YdbBuildParamValue(from_date_param);
     YdbParamValueBuilder to_date_param =
         YdbAddParam(params2_builder, "$toDate");
@@ -443,12 +451,22 @@ YdbStatus StreamQuerySelect(YdbQueryClient client, void* data) {
             YdbResultSet rs = YdbExecuteQueryPartGetResultSet(streamPart);
             YdbResultSetParser parser = YdbCreateResultSetParser(rs);
             while (YdbNextRow(parser)) {
+                char* error;
+
                 printf("Season");
 
                 printf(", SeriesId: ");
                 bool has_series_id;
-                uint64_t series_id = YdbParseUint64(
-                    YdbColumnParser(parser, "series_id"), &has_series_id);
+                uint64_t series_id;
+                error =
+                    YdbParseOptionalUint64(YdbColumnParser(parser, "series_id"),
+                                           &series_id, &has_series_id);
+                if (error != NULL) {
+                    fprintf(stderr, "\nerror: %s\n", error);
+                    free(error);
+                    break;
+                }
+
                 if (has_series_id) {
                     printf("%lu", series_id);
                 } else {
@@ -457,8 +475,16 @@ YdbStatus StreamQuerySelect(YdbQueryClient client, void* data) {
 
                 printf(", SeasonId: ");
                 bool has_season_id;
-                uint64_t season_id = YdbParseUint64(
-                    YdbColumnParser(parser, "season_id"), &has_season_id);
+                uint64_t season_id;
+                error =
+                    YdbParseOptionalUint64(YdbColumnParser(parser, "season_id"),
+                                           &season_id, &has_season_id);
+                if (error != NULL) {
+                    fprintf(stderr, "\nerror: %s\n", error);
+                    free(error);
+                    break;
+                }
+
                 if (has_season_id) {
                     printf("%lu", season_id);
                 } else {
@@ -466,7 +492,14 @@ YdbStatus StreamQuerySelect(YdbQueryClient client, void* data) {
                 }
 
                 printf(", Title: ");
-                char* title = YdbParseUtf8(YdbColumnParser(parser, "title"));
+                char* title;
+                error = YdbParseOptionalUtf8(YdbColumnParser(parser, "title"), &title);
+                if (error != NULL) {
+                    fprintf(stderr, "\nerror: %s\n", error);
+                    free(error);
+                    break;
+                }
+
                 if (title != NULL) {
                     printf("%s", title);
                 } else {
@@ -476,8 +509,16 @@ YdbStatus StreamQuerySelect(YdbQueryClient client, void* data) {
 
                 printf(", Air date: ");
                 bool has_air_date;
-                uint64_t air_date = YdbParseDate(
-                    YdbColumnParser(parser, "first_aired"), &has_air_date);
+                uint64_t air_date;
+                error =
+                    YdbParseOptionalDate(YdbColumnParser(parser, "first_aired"),
+                                         &air_date, &has_air_date);
+                if (error != NULL) {
+                    fprintf(stderr, "\nerror: %s\n", error);
+                    free(error);
+                    break;
+                }
+
                 if (has_air_date) {
                     char* formatted_date =
                         YdbFormatLocalTime(air_date, "%Y-%m-%d");
@@ -577,7 +618,7 @@ YdbStatus RetryQuerySyncNoSession(YdbQueryClient client,
 
     while (true) {
         status = retriable(client, data);
-        
+
         YdbRetryNextStep next_step = YdbRetrierNext(retrier, status);
         switch (next_step) {
         case YDB_RETRY_RETRY:
@@ -611,12 +652,21 @@ bool Run(YdbQueryClient client) {
 
     YdbResultSetParser parser = YdbCreateResultSetParser(result_set);
     while (YdbNextRow(parser)) {
+        char* error;
+
         printf("> SelectSimple:\nSeries");
 
         printf(", Id: ");
         bool id_exists;
-        uint64_t id =
-            YdbParseUint64(YdbColumnParser(parser, "series_id"), &id_exists);
+        uint64_t id;
+        error = YdbParseOptionalUint64(YdbColumnParser(parser, "series_id"),
+                                       &id, &id_exists);
+        if (error != NULL) {
+            fprintf(stderr, "\nerror: %s\n", error);
+            free(error);
+            break;
+        }
+
         if (id_exists) {
             printf("%lu", id);
         } else {
@@ -624,7 +674,15 @@ bool Run(YdbQueryClient client) {
         }
 
         printf(", Title: ");
-        char* title = YdbParseUtf8(YdbColumnParser(parser, "title"));
+        char* title;
+        error = YdbParseOptionalUtf8(YdbColumnParser(parser, "title"), &title);
+        if (error != NULL) {
+            fprintf(stderr, "\nerror: %s\n", error);
+            free(error);
+            free(title);
+            break;
+        }
+
         if (title) {
             printf("%s", title);
         } else {
@@ -633,10 +691,17 @@ bool Run(YdbQueryClient client) {
         free(title);
 
         printf(", Release date: ");
-        bool parsed_date;
-        YdbInstant release_date =
-            YdbParseDate(YdbColumnParser(parser, "release_date"), &parsed_date);
-        if (parsed_date) {
+        bool has_release_date;
+        YdbInstant release_date;
+        error = YdbParseOptionalDate(YdbColumnParser(parser, "release_date"),
+                                     &release_date, &has_release_date);
+        if (error != NULL) {
+            fprintf(stderr, "\nerror: %s\n", error);
+            free(error);
+            break;
+        }
+
+        if (has_release_date) {
             char* formatted_date = YdbFormatLocalTime(release_date, "%Y-%m-%d");
             printf("%s", formatted_date);
             free(formatted_date);
@@ -659,24 +724,39 @@ bool Run(YdbQueryClient client) {
 
     parser = YdbCreateResultSetParser(result_set);
     if (YdbNextRow(parser)) {
+        char* error;
+
         printf("> SelectWithParams:\nSeason");
 
         printf(", Title: ");
-        char* title = YdbParseUtf8(YdbColumnParser(parser, "season_title"));
-        if (title) {
-            printf("%s", title);
+        char* title;
+        error = YdbParseOptionalUtf8(YdbColumnParser(parser, "season_title"),
+                                     &title);
+        if (error != NULL) {
+            fprintf(stderr, "\nerror: %s\n", error);
+            free(error);
         } else {
-            printf("(NULL)");
+            if (title) {
+                printf("%s", title);
+            } else {
+                printf("(NULL)");
+            }
         }
         free(title);
 
         printf(", Series title: ");
-        char* series_title =
-            YdbParseUtf8(YdbColumnParser(parser, "series_title"));
-        if (series_title) {
-            printf("%s", series_title);
+        char* series_title;
+        error = YdbParseOptionalUtf8(YdbColumnParser(parser, "series_title"),
+                                     &series_title);
+        if (error != NULL) {
+            fprintf(stderr, "\nerror: %s\n", error);
+            free(error);
         } else {
-            printf("(NULL)");
+            if (series_title) {
+                printf("%s", series_title);
+            } else {
+                printf("(NULL)");
+            }
         }
         free(series_title);
 
@@ -692,21 +772,26 @@ bool Run(YdbQueryClient client) {
     parser = YdbCreateResultSetParser(result_set);
     printf("> MultiStep:\n");
     while (YdbNextRow(parser)) {
+        char* error;
+
         printf("Episode: ");
         bool episode_id_exits;
-        uint64_t episode_id = YdbParseUint64(
-            YdbColumnParser(parser, "episode_id"), &episode_id_exits);
+        uint64_t episode_id;
+        error = YdbParseOptionalUint64(YdbColumnParser(parser, "episode_id"),
+                                       &episode_id, &episode_id_exits);
         printf("%lu", episode_id);
 
         printf(", Season: ");
         bool season_id_exits;
-        uint64_t season_id = YdbParseUint64(
-            YdbColumnParser(parser, "season_id"), &season_id_exits);
+        uint64_t season_id;
+        error = YdbParseOptionalUint64(YdbColumnParser(parser, "season_id"),
+                                       &season_id, &season_id_exits);
         printf("%lu", season_id);
 
         printf(", Title: ");
-        char* title = YdbParseUtf8(YdbColumnParser(parser, "title"));
-        if (title) {
+        char* title;
+        error = YdbParseOptionalUtf8(YdbColumnParser(parser, "title"), &title);
+        if (title != NULL) {
             printf("%s", title);
         } else {
             printf("(NULL)");
@@ -714,10 +799,17 @@ bool Run(YdbQueryClient client) {
         free(title);
 
         bool air_date_exists;
-        YdbInstant air_date = YdbInstantFromDays(YdbParseUint64(
-            YdbColumnParser(parser, "air_date"), &air_date_exists));
+        uint64_t air_date_days;
+        error = YdbParseOptionalUint64(YdbColumnParser(parser, "air_date"),
+                                       &air_date_days, &air_date_exists);
+        if (error != NULL) {
+            fprintf(stderr, "\nerror: %s\n", error);
+            free(error);
+            break;
+        }
 
-        char* formatted_date = YdbFormatLocalTime(air_date, "%a %b %d, %Y");
+        char* formatted_date = YdbFormatLocalTime(
+            YdbInstantFromDays(air_date_days), "%a %b %d, %Y");
         printf(", Air date: %s\n", formatted_date);
         free(formatted_date);
     }

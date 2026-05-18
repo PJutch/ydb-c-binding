@@ -14,6 +14,7 @@ extern "C" {
 YDB_C_SDK_OPAQUE_STRUCT(YdbStatus)
 
 YdbStatus YdbStatusOk();
+YdbStatus YdbStatusError();
 
 void YdbDestroyStatus(YdbStatus status);
 
@@ -60,14 +61,50 @@ YDB_C_SDK_OPAQUE_STRUCT(YdbValueParser)
 YdbValueParser YdbColumnParser(YdbResultSetParser result_set_parser,
                                char* column_name);
 
-// If exists is NULL treats it as required
-uint64_t YdbParseUint64(YdbValueParser parser, bool* exists);
+// deallocate error message using free()
+// if it is null, no error occured
+char* YdbParseBool(YdbValueParser parser, bool* result);
+char* YdbParseInt8(YdbValueParser parser, int8_t* result);
+char* YdbParseUint8(YdbValueParser parser, uint8_t* result);
+char* YdbParseInt16(YdbValueParser parser, int16_t* result);
+char* YdbParseUint16(YdbValueParser parser, uint16_t* result);
+char* YdbParseInt32(YdbValueParser parser, int32_t* result);
+char* YdbParseUint32(YdbValueParser parser, uint32_t* result);
+char* YdbParseInt64(YdbValueParser parser, int64_t* result);
+char* YdbParseUint64(YdbValueParser parser, uint64_t* result);
+char* YdbParseFloat(YdbValueParser parser, float* result);
+char* YdbParseDouble(YdbValueParser parser, double* result);
+char* YdbParseDate(YdbValueParser parser, YdbInstant* result);
+char* YdbParseInstant(YdbValueParser parser, YdbInstant* result);
+char* YdbParseTimestamp(YdbValueParser parser, YdbInstant* result);
 
-// May return NULL
-char* YdbParseUtf8(YdbValueParser parser);
+// deallocate result using free() too
+char* YdbParseBytes(YdbValueParser parser, char** result);
+char* YdbParseUtf8(YdbValueParser parser, char** result);
+char* YdbParseText(YdbValueParser parser, char** result);
+char* YdbParseYson(YdbValueParser parser, char** result);
+char* YdbParseJson(YdbValueParser parser, char** result);
 
-// ok may be NULL to ignore errors
-YdbInstant YdbParseDate(YdbValueParser parser, bool* ok);
+char* YdbParseOptionalBool(YdbValueParser parser, bool* result, bool* exists);
+char* YdbParseOptionalInt8(YdbValueParser parser, int8_t* result, bool* exists);
+char* YdbParseOptionalUint8(YdbValueParser parser, uint8_t* result, bool* exists);
+char* YdbParseOptionalInt16(YdbValueParser parser, int16_t* result, bool* exists);
+char* YdbParseOptionalUint16(YdbValueParser parser, uint16_t* result, bool* exists);
+char* YdbParseOptionalInt32(YdbValueParser parser, int32_t* result, bool* exists);
+char* YdbParseOptionalUint32(YdbValueParser parser, uint32_t* result, bool* exists);
+char* YdbParseOptionalInt64(YdbValueParser parser, int64_t* result, bool* exists);
+char* YdbParseOptionalUint64(YdbValueParser parser, uint64_t* result, bool* exists);
+char* YdbParseOptionalFloat(YdbValueParser parser, float* result, bool* exists);
+char* YdbParseOptionalDouble(YdbValueParser parser, double* result, bool* exists);
+char* YdbParseOptionalDate(YdbValueParser parser, YdbInstant* result, bool* exists);
+char* YdbParseOptionalInstant(YdbValueParser parser, YdbInstant* result, bool* exists);
+char* YdbParseOptionalTimestamp(YdbValueParser parser, YdbInstant* result, bool* exists);
+
+char* YdbParseOptionalBytes(YdbValueParser parser, char** result);
+char* YdbParseOptionalUtf8(YdbValueParser parser, char** result);
+char* YdbParseOptionalText(YdbValueParser parser, char** result);
+char* YdbParseOptionalYson(YdbValueParser parser, char** result);
+char* YdbParseOptionalJson(YdbValueParser parser, char** result);
 
 #ifdef __cplusplus
 }
