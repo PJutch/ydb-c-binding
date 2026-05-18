@@ -58,31 +58,21 @@ NYdb::NQuery::TTxSettings YdbCreateTxSettings(YdbTxMode mode,
     }
 }
 
+NYdb::NQuery::TTxControl YdbCreateTx(YdbTx* tx_) {
+    if (!tx_) {
+        return NYdb::NQuery::TTxControl::NoTx();
+    } else if (tx_->mode == YDB_TX_TRANSACTION) {
+        return NYdb::NQuery::TTxControl::Tx(
+            YdbFromOpaque<NYdb::NQuery::TTransaction>(tx_->transaction));
+    } else {
+        return NYdb::NQuery::TTxControl::BeginTx(
+                   YdbCreateTxSettings(tx_->mode,
+                                       tx_->allow_inconsistent_reads))
+            .CommitTx(tx_->commit);
+    }
+}
+
 extern "C" {
-
-YdbTx YdbNoTx() {
-    return TO_NEW_OPAQUE(NYdb::NQuery::TTxControl,
-                         NYdb::NQuery::TTxControl::NoTx());
-}
-
-YdbTx YdbTransactionTx(YdbTransaction transaction, bool commit) {
-    return TO_NEW_OPAQUE(
-        NYdb::NQuery::TTxControl,
-        NYdb::NQuery::TTxControl::Tx(
-            YdbFromOpaque<NYdb::NQuery::TTransaction>(transaction)));
-}
-
-YdbTx YdbBeginTx(YdbTxMode mode, bool commit, bool allow_inconsistent_reads) {
-    return TO_NEW_OPAQUE(
-        NYdb::NQuery::TTxControl,
-        NYdb::NQuery::TTxControl::BeginTx(
-            YdbCreateTxSettings(mode, allow_inconsistent_reads))
-            .CommitTx(commit));
-}
-
-void YdbDestroyTx(YdbTx tx) {
-    delete YdbPtrFromOpaque<NYdb::NQuery::TTxControl>(tx);
-}
 
 void YdbDestroyTransaction(YdbTransaction transaction) {
     delete YdbPtrFromOpaque<NYdb::NQuery::TTransaction>(transaction);
@@ -118,14 +108,13 @@ YdbAsyncCommitResult YdbCommit(YdbTransaction transaction) {
         YdbFromOpaque<NYdb::NQuery::TTransaction>(transaction).Commit());
 }
 
-YdbAsyncQueryResult YdbExecuteQuery(YdbSession session_, char* query, YdbTx tx_,
-                                    YdbParams params_) {
+YdbAsyncQueryResult YdbExecuteQuery(YdbSession session_, char* query,
+                                    YdbTx* tx_, YdbParams params_) {
     auto& session = YdbFromOpaque<NYdb::NQuery::TSession>(session_);
     auto* params = YdbPtrFromOpaque<NYdb::TParams>(params_);
-    auto& tx = YdbFromOpaque<NYdb::NQuery::TTxControl>(tx_);
-
-    auto future = params ? session.ExecuteQuery(query, tx, *params)
-                         : session.ExecuteQuery(query, tx);
+    auto future = params
+                      ? session.ExecuteQuery(query, YdbCreateTx(tx_), *params)
+                      : session.ExecuteQuery(query, YdbCreateTx(tx_));
     return TO_NEW_OPAQUE(NYdb::NQuery::TAsyncExecuteQueryResult, future);
 };
 
