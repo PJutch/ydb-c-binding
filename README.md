@@ -1,8 +1,9 @@
 # YDB C Binding
 ## Сборка
 1. Compile [ydb-cpp-sdk](https://github.com/ydb-platform/ydb-cpp-sdk) 
+   following their instruction
    adding `-DCMAKE_POSITION_INDEPENDENT_CODE=ON`
-   to dependencies built from source
+   to it and dependencies built from source
 2. ```bash
    cmake --install . --prefix ~/ydb_deps/ydb-cpp-sdk
    ```
